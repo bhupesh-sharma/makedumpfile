@@ -684,8 +684,9 @@ unsigned long get_kvbase_arm64(void);
 #define PMD_MASKED_BITS_64K_4_6  0xc0000000000000ffUL
 
 #define PTE_RPN_MASK_DEFAULT  0xffffffffffffffffUL
-#define PTE_RPN_SIZE_L4_4_6   (info->page_size == 65536 ? 41 : 45)
-#define PTE_RPN_MASK_L4_4_6   (((1UL << PTE_RPN_SIZE_L4_4_6) - 1) << info->page_shift)
+#define PAGE_PA_MAX_L4_4_6    (info->kernel_version >= KERNEL_VERSION(4,11,0) ? 53 : 57)
+#define PTE_RPN_MASK_L4_4_6   \
+	(((1UL << PAGE_PA_MAX_L4_4_6) - 1) & ~((1UL << info->page_shift) - 1))
 #define PTE_RPN_SHIFT_L4_4_6  info->page_shift
 
 #define PGD_MASKED_BITS_4_7  0xc0000000000000ffUL
