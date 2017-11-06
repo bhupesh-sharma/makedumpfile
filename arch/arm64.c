@@ -281,6 +281,12 @@ vaddr_to_paddr_arm64(unsigned long vaddr)
 			return NOT_PADDR;
 		}
 
+		ERRMSG("BHUPESH vaddr=%llu, paddr=%llu, swapper_phys=%llu, \
+				*pgda=%p, pgdv=%llu, *puda=%p, pudv=%llu, *pmda=%p, pmdv=%llu, \
+				*ptea=%p, ptev=%llu\n", vaddr, paddr, swapper_phys,
+				*pgda, pgdv, *puda, pudv, *pmda, pmdv,
+				*ptea, ptev);
+
 		if (!(pte_val(ptev) & PAGE_PRESENT)) {
 			ERRMSG("Can't get a valid pte.\n");
 			return NOT_PADDR;
