@@ -39,6 +39,7 @@ get_kaslr_offset_x86_64(unsigned long vaddr)
 	unsigned int i;
 	char buf[BUFSIZE_FGETS], *endp;
 
+	ERRMSG("BHUPESH inside get_kaslr_offset_x86_64 1.\n");
 	if (!info->kaslr_offset && info->file_vmcoreinfo) {
 		if (fseek(info->file_vmcoreinfo, 0, SEEK_SET) < 0) {
 			ERRMSG("Can't seek the vmcoreinfo file(%s). %s\n",

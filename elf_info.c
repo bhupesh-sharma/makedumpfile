@@ -1190,8 +1190,12 @@ get_pt_note(off_t *offset, unsigned long *size)
 int
 has_vmcoreinfo(void)
 {
-	if (offset_vmcoreinfo && size_vmcoreinfo)
+	ERRMSG("Bhupesh inside has_vmcoreinfo 1\n ");
+	if (offset_vmcoreinfo && size_vmcoreinfo) {
+		ERRMSG("Bhupesh inside has_vmcoreinfo 1a\n ");
 		return TRUE;
+	}
+	ERRMSG("Bhupesh inside has_vmcoreinfo 1b\n ");
 	return FALSE;
 }
 

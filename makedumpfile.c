@@ -1109,6 +1109,7 @@ check_release(void)
 {
 	unsigned long utsname;
 
+	ERRMSG("BHUPESH inside check_release 1.\n");
 	/*
 	 * Get the kernel version.
 	 */
@@ -2268,9 +2269,11 @@ write_vmcoreinfo_data(void)
 	if (info->phys_base)
 		fprintf(info->file_vmcoreinfo, "%s%lu\n", STR_NUMBER("phys_base"),
 			info->phys_base);
-	if (info->kaslr_offset)
+	if (info->kaslr_offset) {
+		ERRMSG("BHUPESH info->kaslr_offset is TRUE.\n");
 		fprintf(info->file_vmcoreinfo, "%s%lx\n", STR_KERNELOFFSET,
 			info->kaslr_offset);
+	}
 
 	/*
 	 * write the source file of 1st kernel
@@ -3807,20 +3810,24 @@ find_kaslr_offsets()
 	unsigned long size;
 	int ret = FALSE;
 
+	ERRMSG("BHUPESH inside find_kaslr_offsets 1.\n");
 	get_vmcoreinfo(&offset, &size);
 
 	if (!(info->name_vmcoreinfo = strdup(FILENAME_VMCOREINFO))) {
 		MSG("Can't duplicate strings(%s).\n", FILENAME_VMCOREINFO);
 		return FALSE;
 	}
+	ERRMSG("BHUPESH inside find_kaslr_offsets 2.\n");
 	if (!copy_vmcoreinfo(offset, size))
 		goto out;
 
+	ERRMSG("BHUPESH inside find_kaslr_offsets 3.\n");
 	if (!open_vmcoreinfo("r"))
 		goto out;
 
 	unlink(info->name_vmcoreinfo);
 
+	ERRMSG("BHUPESH inside find_kaslr_offsets 4.\n");
 	/*
 	 * This arch specific function should update info->kaslr_offset. If
 	 * kaslr is not enabled then offset will be set to 0. arch specific
@@ -3830,13 +3837,16 @@ find_kaslr_offsets()
 	 */
 	get_kaslr_offset(SYMBOL(_stext));
 
+	ERRMSG("BHUPESH inside find_kaslr_offsets 5.\n");
 	close_vmcoreinfo();
 
+	ERRMSG("BHUPESH inside find_kaslr_offsets 6.\n");
 	ret = TRUE;
 out:
 	free(info->name_vmcoreinfo);
 	info->name_vmcoreinfo = NULL;
 
+	ERRMSG("BHUPESH inside find_kaslr_offsets 7.\n");
 	return ret;
 }
 
@@ -3847,6 +3857,7 @@ initial(void)
 	unsigned long size;
 	int debug_info = FALSE;
 
+	ERRMSG("BHUPESH inside initial 1.\n");
 	if (is_xen_memory() && !initial_xen())
 		return FALSE;
 
@@ -3881,6 +3892,7 @@ initial(void)
 	 * Get the debug information for analysis from the vmcoreinfo file
 	 */
 	if (info->flag_read_vmcoreinfo) {
+		ERRMSG("BHUPESH inside initial 2.\n");
 		if (!read_vmcoreinfo())
 			return FALSE;
 		close_vmcoreinfo();
@@ -3889,28 +3901,40 @@ initial(void)
 	 * Get the debug information for analysis from the kernel file
 	 */
 	} else if (info->name_vmlinux) {
+		ERRMSG("BHUPESH inside initial 3.\n");
 		set_dwarf_debuginfo("vmlinux", NULL,
 					info->name_vmlinux, info->fd_vmlinux);
 
-		if (has_vmcoreinfo() && !find_kaslr_offsets())
+		ERRMSG("BHUPESH inside initial 4.\n");
+		if (has_vmcoreinfo() && !find_kaslr_offsets()) {
+			ERRMSG("BHUPESH inside initial 4a.\n");
 			return FALSE;
+		}
 
-		if (!get_symbol_info())
+		if (!get_symbol_info()) {
+			ERRMSG("BHUPESH inside initial 4b.\n");
 			return FALSE;
+		}
 
-		if (!get_structure_info())
+		if (!get_structure_info()) {
+			ERRMSG("BHUPESH inside initial 4c.\n");
 			return FALSE;
+		}
 
-		if (!get_srcfile_info())
+		if (!get_srcfile_info()) {
+			ERRMSG("BHUPESH inside initial 4d.\n");
 			return FALSE;
-
+		}
+			ERRMSG("BHUPESH inside initial 4e.\n");
 		debug_info = TRUE;
 	} else {
+		ERRMSG("BHUPESH inside initial 5.\n");
 		/*
 		 * Check whether /proc/vmcore contains vmcoreinfo,
 		 * and get both the offset and the size.
 		 */
 		if (!has_vmcoreinfo()) {
+			ERRMSG("BHUPESH inside initial 6.\n");
 			if (info->max_dump_level <= DL_EXCLUDE_ZERO)
 				goto out;
 

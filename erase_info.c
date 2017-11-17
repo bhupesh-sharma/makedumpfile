@@ -1070,6 +1070,7 @@ resolve_config_entry(struct config_entry *ce, unsigned long long base_vaddr,
 {
 	unsigned long long symbol;
 
+	ERRMSG("BHUPESH inside resolve_config_entry 1.\n");
 	if (ce->flag & SYMBOL_ENTRY) {
 		/* find the symbol info */
 		if (!ce->name)
