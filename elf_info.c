@@ -810,13 +810,25 @@ static int exclude_segment(struct pt_load_segment **pt_loads,
 	int i, j, tidx = -1;
 	unsigned long long	vstart, vend, kvstart, kvend;
 	struct pt_load_segment temp_seg = {0};
-	kvstart = (ulong)start | PAGE_OFFSET;
-	kvend = (ulong)end | PAGE_OFFSET;
+	kvstart = (ulong)start + PAGE_OFFSET;
+	kvend = (ulong)end + PAGE_OFFSET;
 	unsigned long size;
 
 	for (i = 0; i < (*num_pt_loads); i++) {
 		vstart = (*pt_loads)[i].virt_start;
 		vend = (*pt_loads)[i].virt_end;
+		struct pt_load_segment *p = &pt_loads[i];
+		//ERRMSG("BHUPESH LOAD (%d)\n", i);
+		//ERRMSG("  phys_start : %llx\n", (*pt_loads)[i].phys_start);
+		//ERRMSG("  phys_end   : %llx\n", (*pt_loads)[i].phys_end);
+		//ERRMSG("  virt_start : %llx\n", (*pt_loads)[i].virt_start);
+		//ERRMSG("  virt_end   : %llx\n", (*pt_loads)[i].virt_end);
+		//ERRMSG("  file_offset   : %llx\n", (*pt_loads)[i].file_offset);
+		//ERRMSG("  file_size   : %llx\n", (*pt_loads)[i].file_size);
+		//ERRMSG("  kvstart   : %llx\n", kvstart);
+		//ERRMSG("  kvend   : %llx\n", kvend);
+		//ERRMSG("  PAGE_OFFSET   : %llx\n", PAGE_OFFSET);
+
 		if (kvstart <  vend && kvend > vstart) {
 			if (kvstart != vstart && kvend != vend) {
 				/* Split load segment */
@@ -832,6 +844,19 @@ static int exclude_segment(struct pt_load_segment **pt_loads,
 				(*pt_loads)[i].virt_end = kvstart - 1;
 				(*pt_loads)[i].phys_end =  start - 1;
 				(*pt_loads)[i].file_size -= temp_seg.file_size;
+				ERRMSG("  pt_loads phys_start : %llx\n", (*pt_loads)[i].phys_start);
+				ERRMSG("  pt_loads phys_end   : %llx\n", (*pt_loads)[i].phys_end);
+				ERRMSG("  pt_loads virt_start : %llx\n", (*pt_loads)[i].virt_start);
+				ERRMSG("  pt_loads virt_end   : %llx\n", (*pt_loads)[i].virt_end);
+				ERRMSG("  pt_loads file_offset : %llx\n", (*pt_loads)[i].file_offset);
+				ERRMSG("  pt_loads file_size   : %llx\n", (*pt_loads)[i].file_size);
+				
+				ERRMSG("   phys_start : %llx\n", temp_seg.phys_start);
+				ERRMSG("   phys_end   : %llx\n", temp_seg.phys_end);
+				ERRMSG("   virt_start : %llx\n", temp_seg.virt_start);
+				ERRMSG("   virt_end   : %llx\n", temp_seg.virt_end);
+				ERRMSG("   file_offset : %llx\n", temp_seg.file_offset);
+				ERRMSG("   file_size   : %llx\n", temp_seg.file_size);
 
 				tidx = i+1;
 			} else if (kvstart != vstart) {
@@ -842,6 +867,7 @@ static int exclude_segment(struct pt_load_segment **pt_loads,
 				(*pt_loads)[i].virt_start = kvend + 1;
 			}
 			(*pt_loads)[i].file_size -= (end -start);
+			ERRMSG("  pt_loads file_size 2: %llx, end:%llx, start:%llx\n", (*pt_loads)[i].file_size, end, start);
 		}
 	}
 	/* Insert split load segment, if any. */
@@ -915,7 +941,19 @@ int get_kcore_dump_loads(void)
 	pt_loads = pls;
 	num_pt_loads = loads;
 
+	for (i = 0; i < num_pt_loads; ++i) {
+		struct pt_load_segment *p = &pt_loads[i];
+		ERRMSG("LOAD (%d)\n", i);
+		ERRMSG("  phys_start : %llx\n", p->phys_start);
+		ERRMSG("  phys_end   : %llx\n", p->phys_end);
+		ERRMSG("  virt_start : %llx\n", p->virt_start);
+		ERRMSG("  virt_end   : %llx\n", p->virt_end);
+		ERRMSG("  file_offset   : %llx\n", p->file_offset);
+		ERRMSG("  file_size   : %llx\n", p->file_size);
+	}
+	
 	for (i = 0; i < crash_reserved_mem_nr; i++)	{
+		ERRMSG("Calling exclude_segment (%d), crash_reserved_mem[i].start:%llx, crash_reserved_mem[i].end:%llx\n", i, crash_reserved_mem[i].start, crash_reserved_mem[i].end);
 		exclude_segment(&pt_loads, &num_pt_loads,
 				crash_reserved_mem[i].start, crash_reserved_mem[i].end);
 	}
@@ -929,12 +967,26 @@ int get_kcore_dump_loads(void)
 
 	for (i = 0; i < num_pt_loads; ++i) {
 		struct pt_load_segment *p = &pt_loads[i];
-		DEBUG_MSG("LOAD (%d)\n", i);
-		DEBUG_MSG("  phys_start : %llx\n", p->phys_start);
-		DEBUG_MSG("  phys_end   : %llx\n", p->phys_end);
-		DEBUG_MSG("  virt_start : %llx\n", p->virt_start);
-		DEBUG_MSG("  virt_end   : %llx\n", p->virt_end);
+#if 0
+		if (i == 11) {
+			p->phys_start= 0x100000000;
+			p->phys_end   = 0x3480000000;
+			p->virt_start = 0xffff90cc40000000;
+			p->virt_end   = 0xffff90ffc0000000;
+			p->file_offset=0x10cc40002000;
+			p->file_size  =0x3380000000;
+			//p->file_size  =0x335EFFFFFF;
+		}
+#endif
+		ERRMSG("LOAD (%d)\n", i);
+		ERRMSG("  phys_start : %llx\n", p->phys_start);
+		ERRMSG("  phys_end   : %llx\n", p->phys_end);
+		ERRMSG("  virt_start : %llx\n", p->virt_start);
+		ERRMSG("  virt_end   : %llx\n", p->virt_end);
+		ERRMSG("  file_offset   : %llx\n", p->file_offset);
+		ERRMSG("  file_size   : %llx\n", p->file_size);
 	}
+
 
 	return TRUE;
 }
