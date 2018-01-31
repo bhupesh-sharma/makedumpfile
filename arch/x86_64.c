@@ -82,6 +82,7 @@ get_page_offset_x86_64(void)
 		page_offset_base += info->kaslr_offset;
 		if (!readmem(VADDR, page_offset_base, &info->page_offset,
 					sizeof(info->page_offset))) {
+			 ERRMSG("BHUPESH 1 page_offset:%lx\n", info->page_offset);
 			 ERRMSG("Can't read page_offset_base.\n");
 			 return FALSE;
 		}
@@ -96,6 +97,7 @@ get_page_offset_x86_64(void)
 					&& virt_start < __START_KERNEL_map
 					&& phys_start != NOT_PADDR) {
 				info->page_offset = virt_start - phys_start;
+				ERRMSG("BHUPESH 2 page_offset:%lx\n", info->page_offset);
 				return TRUE;
 			}
 		}
@@ -103,8 +105,10 @@ get_page_offset_x86_64(void)
 
 	if (info->kernel_version < KERNEL_VERSION(2, 6, 27)) {
 		info->page_offset = __PAGE_OFFSET_ORIG;
+		ERRMSG("BHUPESH 3 page_offset:%lx\n", info->page_offset);
 	} else {
 		info->page_offset = __PAGE_OFFSET_2_6_27;
+		ERRMSG("BHUPESH 4 page_offset:%lx\n", info->page_offset);
 	}
 
 	return TRUE;

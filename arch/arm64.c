@@ -100,6 +100,12 @@ static unsigned long kimage_voffset;
 #define pud_index(vaddr)		(((vaddr) >> PUD_SHIFT) & (PTRS_PER_PUD - 1))
 #define pgd_page_paddr(pgd)		(pgd_val(pgd) & PHYS_MASK & (int32_t)PAGE_MASK)
 
+#define PAGE_OFFSET_36 ((0xffffffffffffffffUL) << 36)
+#define PAGE_OFFSET_39 ((0xffffffffffffffffUL) << 39)
+#define PAGE_OFFSET_42 ((0xffffffffffffffffUL) << 42)
+#define PAGE_OFFSET_47 ((0xffffffffffffffffUL) << 47)
+#define PAGE_OFFSET_48 ((0xffffffffffffffffUL) << 48)
+
 static unsigned long long
 __pa(unsigned long vaddr)
 {
@@ -140,8 +146,6 @@ pud_offset(pgd_t *pgda, pgd_t *pgdv, unsigned long vaddr)
 
 static int calculate_plat_config(void)
 {
-	va_bits = NUMBER(VA_BITS);
-
 	/* derive pgtable_level as per arch/arm64/Kconfig */
 	if ((PAGESIZE() == SZ_16K && va_bits == 36) ||
 			(PAGESIZE() == SZ_64K && va_bits == 42)) {
@@ -188,12 +192,10 @@ get_machdep_info_arm64(void)
 	kimage_voffset = NUMBER(kimage_voffset);
 	info->max_physmem_bits = PHYS_MASK_SHIFT;
 	info->section_size_bits = SECTIONS_SIZE_BITS;
-	info->page_offset = 0xffffffffffffffffUL << (va_bits - 1);
 
 	DEBUG_MSG("kimage_voffset   : %lx\n", kimage_voffset);
 	DEBUG_MSG("max_physmem_bits : %lx\n", info->max_physmem_bits);
 	DEBUG_MSG("section_size_bits: %lx\n", info->section_size_bits);
-	DEBUG_MSG("page_offset      : %lx\n", info->page_offset);
 
 	return TRUE;
 }
@@ -219,6 +221,48 @@ get_xen_info_arm64(void)
 int
 get_versiondep_info_arm64(void)
 {
+	unsigned long long stext;
+
+	/* We can read the _stext symbol from vmlinux and determine the
+	 * VA_BITS and page_offset.
+	 */
+
+	/* Open the vmlinux file */
+	open_kernel_file();
+	set_dwarf_debuginfo("vmlinux", NULL,
+			info->name_vmlinux, info->fd_vmlinux);
+
+	if (!get_symbol_info())
+		return FALSE;
+
+	/* Get the '_stext' symbol */
+	if (SYMBOL(_stext) == NOT_FOUND_SYMBOL) {
+		ERRMSG("Can't get the symbol of _stext.\n");
+		return FALSE;
+	} else {
+		stext = SYMBOL(_stext);
+	}
+
+	/* Derive va_bits as per arch/arm64/Kconfig */
+	if ((stext & PAGE_OFFSET_36) == PAGE_OFFSET_36) {
+		va_bits = 36;
+	} else if ((stext & PAGE_OFFSET_39) == PAGE_OFFSET_39) {
+		va_bits = 39;
+	} else if ((stext & PAGE_OFFSET_42) == PAGE_OFFSET_42) {
+		va_bits = 42;
+	} else if ((stext & PAGE_OFFSET_47) == PAGE_OFFSET_47) {
+		va_bits = 47;
+	} else if ((stext & PAGE_OFFSET_48) == PAGE_OFFSET_48) {
+		va_bits = 48;
+	} else {
+		ERRMSG("Cannot find a proper _stext for calculating VA_BITS\n");
+		return FALSE;
+	}
+
+	info->page_offset = (0xffffffffffffffffUL) << (va_bits - 1);
+	
+	DEBUG_MSG("page_offset=%lx, va_bits=%d\n", info->page_offset, va_bits);
+
 	return TRUE;
 }
 

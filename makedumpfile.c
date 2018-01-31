@@ -1162,12 +1162,13 @@ int
 open_kernel_file(void)
 {
 	int fd;
+	int ret = FALSE;
 
 	if (info->name_vmlinux) {
 		if ((fd = open(info->name_vmlinux, O_RDONLY)) < 0) {
 			ERRMSG("Can't open the kernel file(%s). %s\n",
 			    info->name_vmlinux, strerror(errno));
-			return FALSE;
+			return ret;
 		}
 		info->fd_vmlinux = fd;
 	}
@@ -1175,11 +1176,13 @@ open_kernel_file(void)
 		if ((fd = open(info->name_xen_syms, O_RDONLY)) < 0) {
 			ERRMSG("Can't open the kernel file(%s). %s\n",
 			    info->name_xen_syms, strerror(errno));
-			return FALSE;
+			return ret;
 		}
 		info->fd_xen_syms = fd;
 	}
-	return TRUE;
+	ret = TRUE;
+
+	return ret;
 }
 
 int
@@ -2681,8 +2684,10 @@ copy_vmcoreinfo(off_t offset, unsigned long size)
 	char buf[VMCOREINFO_BYTES];
 	const off_t failed = (off_t)-1;
 
-	if (!offset || !size)
+	if (!offset || !size) {
+		ERRMSG("offset=%lx, size=%lx\n", offset, size);
 		return FALSE;
+	}
 
 	if ((fd = mkstemp(info->name_vmcoreinfo)) < 0) {
 		ERRMSG("Can't open the vmcoreinfo file(%s). %s\n",
@@ -3886,8 +3891,9 @@ initial(void)
 	 * Get the debug information for analysis from the vmcoreinfo file
 	 */
 	if (info->flag_read_vmcoreinfo) {
-		if (!read_vmcoreinfo())
+		if (!read_vmcoreinfo()) {
 			return FALSE;
+		}
 		close_vmcoreinfo();
 		debug_info = TRUE;
 	/*
@@ -4074,7 +4080,7 @@ out:
 		}
 	}
 
-	if (debug_info && !get_machdep_info())
+	if (!get_machdep_info())
 		return FALSE;
 
 	if (debug_info && !calibrate_machdep_info())
@@ -4131,8 +4137,9 @@ out:
 
 	/* use buddy identification of free pages whether cyclic or not */
 	/* (this can reduce pages scan of 1TB memory from 60sec to 30sec) */
-	if (info->dump_level & DL_EXCLUDE_FREE)
+	if (info->dump_level & DL_EXCLUDE_FREE) {
 		setup_page_is_buddy();
+	}
 
 	if (info->flag_usemmap == MMAP_TRY ) {
 		if (initialize_mmap()) {
@@ -5378,20 +5385,26 @@ page_is_buddy_v3(unsigned long flags, unsigned int _mapcount,
 static void
 setup_page_is_buddy(void)
 {
-	if (OFFSET(page.private) == NOT_FOUND_STRUCTURE)
+	if (OFFSET(page.private) == NOT_FOUND_STRUCTURE) {
+		ERRMSG("OFFSET(page.private) == NOT_FOUND_STRUCTURE\n");
 		goto out;
+	}
 
 	if (NUMBER(PG_buddy) == NOT_FOUND_NUMBER) {
 		if (NUMBER(PAGE_BUDDY_MAPCOUNT_VALUE) != NOT_FOUND_NUMBER) {
-			if (OFFSET(page._mapcount) != NOT_FOUND_STRUCTURE)
+			if (OFFSET(page._mapcount) != NOT_FOUND_STRUCTURE) {
+				ERRMSG("OFFSET(page._mapcount) != NOT_FOUND_STRUCTURE\n");
 				info->page_is_buddy = page_is_buddy_v3;
+			}
 		}
-	} else
+	} else {
+		ERRMSG("NUMBER(PG_buddy) != NOT_FOUND_NUMBER\n");
 		info->page_is_buddy = page_is_buddy_v2;
+	}
 
 out:
 	if (!info->page_is_buddy)
-		DEBUG_MSG("Can't select page_is_buddy handler; "
+		ERRMSG("Can't select page_is_buddy handler; "
 			  "follow free lists instead of mem_map array.\n");
 }
 
@@ -6360,9 +6373,10 @@ create_2nd_bitmap(struct cycle *cycle)
 	/*
 	 * Exclude free pages.
 	 */
-	if ((info->dump_level & DL_EXCLUDE_FREE) && !info->page_is_buddy)
+	if ((info->dump_level & DL_EXCLUDE_FREE) && !info->page_is_buddy) {
 		if (!exclude_free_page(cycle))
 			return FALSE;
+	}
 
 	/*
 	 * Exclude Xen user domain.
@@ -11090,7 +11104,14 @@ static struct option longopts[] = {
 	{"cyclic-buffer", required_argument, NULL, OPT_CYCLIC_BUFFER},
 	{"eppic", required_argument, NULL, OPT_EPPIC},
 	{"non-mmap", no_argument, NULL, OPT_NON_MMAP},
+#ifdef __aarch64__ 
+	/* VMLINUX file is required for aarch64 for get
+	 * the symbols required to calculate va_bits.
+	 */
+	{"mem-usage", required_argument, NULL, OPT_MEM_USAGE},
+#else
 	{"mem-usage", no_argument, NULL, OPT_MEM_USAGE},
+#endif
 	{"splitblock-size", required_argument, NULL, OPT_SPLITBLOCK_SIZE},
 	{"work-dir", required_argument, NULL, OPT_WORKING_DIR},
 	{"num-threads", required_argument, NULL, OPT_NUM_THREADS},
@@ -11201,8 +11222,22 @@ main(int argc, char *argv[])
 			info->flag_partial_dmesg = 1;
 			break;
 		case OPT_MEM_USAGE:
-		       info->flag_mem_usage = 1;
-		       break;
+			info->flag_mem_usage = 1;
+#ifdef __aarch64__
+			/* VMLINUX file is required for aarch64 for get
+			 * the symbols required to calculate va_bits and
+			 * it should be the 1st command parameter being
+			 * specified.
+			 */
+			if (strcmp(optarg, "/proc/kcore") == 0) {
+				MSG("vmlinux path should be 1st commandline parameter with --mem-usage option.\n");
+				goto out;
+			}
+			else {
+				info->name_vmlinux = optarg;
+			}
+#endif
+			break;
 		case OPT_COMPRESS_SNAPPY:
 			info->flag_compress = DUMP_DH_COMPRESSED_SNAPPY;
 			break;

@@ -1190,8 +1190,10 @@ get_pt_note(off_t *offset, unsigned long *size)
 int
 has_vmcoreinfo(void)
 {
-	if (offset_vmcoreinfo && size_vmcoreinfo)
+	if (offset_vmcoreinfo && size_vmcoreinfo) {
 		return TRUE;
+	}
+	
 	return FALSE;
 }
 
@@ -1209,6 +1211,7 @@ get_vmcoreinfo(off_t *offset, unsigned long *size)
 		*offset = offset_vmcoreinfo;
 	if (size)
 		*size   = size_vmcoreinfo;
+	
 }
 
 int
