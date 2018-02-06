@@ -5566,9 +5566,11 @@ exclude_zero_pages_cyclic(struct cycle *cycle)
 	unsigned long long paddr;
 	unsigned char buf[info->page_size];
 
+	ERRMSG("BHUPESH inside exclude_zero_pages_cyclic.\n");
 	for (pfn = cycle->start_pfn, paddr = pfn_to_paddr(pfn); pfn < cycle->end_pfn;
 	    pfn++, paddr += info->page_size) {
 
+		//ERRMSG("BHUPESH inside exclude_zero_pages_cyclic, calling is_in_segs.\n");
 		if (!is_in_segs(paddr))
 			continue;
 
@@ -5583,12 +5585,14 @@ exclude_zero_pages_cyclic(struct cycle *cycle)
 			    pfn, info->max_mapnr);
 			return FALSE;
 		}
+
 		if (is_zero_page(buf, info->page_size)) {
 			if (clear_bit_on_2nd_bitmap(pfn, cycle))
 				pfn_zero++;
 		}
 	}
 
+	ERRMSG("BHUPESH inside exclude_zero_pages_cyclic, returning TRUE.\n");
 	return TRUE;
 }
 
@@ -6327,9 +6331,11 @@ create_2nd_bitmap(struct cycle *cycle)
 	 */
 	if (info->flag_cyclic) {
 		/* Have to do it from scratch. */
+		ERRMSG("BHUPESH A Inside create_2nd_bitmap calling initialize_2nd_bitmap_cyclic.\n");
 		initialize_2nd_bitmap_cyclic(cycle);
 	} else {
 		/* Can copy 1st-bitmap to 2nd-bitmap. */
+		ERRMSG("BHUPESH B Inside create_2nd_bitmap calling copy_bitmap.\n");
 		if (!copy_bitmap()) {
 			ERRMSG("Can't copy 1st-bitmap to 2nd-bitmap.\n");
 			return FALSE;
@@ -6340,6 +6346,7 @@ create_2nd_bitmap(struct cycle *cycle)
 	 * If re-filtering ELF dump, exclude pages that were already
 	 * excluded in the original file.
 	 */
+	ERRMSG("BHUPESH C Inside create_2nd_bitmap calling exclude_nodata_pages.\n");
 	exclude_nodata_pages(cycle);
 
 	/*
@@ -6351,6 +6358,7 @@ create_2nd_bitmap(struct cycle *cycle)
 	    info->dump_level & DL_EXCLUDE_USER_DATA ||
 	    NUMBER(PG_hwpoison) != NOT_FOUND_NUMBER ||
 	    ((info->dump_level & DL_EXCLUDE_FREE) && info->page_is_buddy)) {
+		ERRMSG("BHUPESH D Inside create_2nd_bitmap calling exclude_unnecessary_pages.\n");
 		if (!exclude_unnecessary_pages(cycle)) {
 			ERRMSG("Can't exclude unnecessary pages.\n");
 			return FALSE;
@@ -6360,9 +6368,11 @@ create_2nd_bitmap(struct cycle *cycle)
 	/*
 	 * Exclude free pages.
 	 */
-	if ((info->dump_level & DL_EXCLUDE_FREE) && !info->page_is_buddy)
+	if ((info->dump_level & DL_EXCLUDE_FREE) && !info->page_is_buddy) {
+		ERRMSG("BHUPESH E Inside create_2nd_bitmap calling exclude_free_page.\n");
 		if (!exclude_free_page(cycle))
 			return FALSE;
+	}
 
 	/*
 	 * Exclude Xen user domain.
@@ -6392,20 +6402,24 @@ create_2nd_bitmap(struct cycle *cycle)
 		 * 2nd-bitmap should be flushed at this time, because
 		 * exclude_zero_pages() checks 2nd-bitmap.
 		 */
+		ERRMSG("BHUPESH F Inside create_2nd_bitmap calling sync_2nd_bitmap.\n");
 		if (!sync_2nd_bitmap())
 			return FALSE;
 
+		ERRMSG("BHUPESH G Inside create_2nd_bitmap calling exclude_zero_pages_cyclic.\n");
 		if (!exclude_zero_pages_cyclic(cycle)) {
 			ERRMSG("Can't exclude pages filled with zero for creating an ELF dumpfile.\n");
 			return FALSE;
 		}
 	}
 
+	ERRMSG("BHUPESH H Inside create_2nd_bitmap calling sync_2nd_bitmap.\n");
 	if (!sync_2nd_bitmap())
 		return FALSE;
 
 	/* --exclude-unused-vm means exclude vmemmap page structures for unused pages */
 	if (info->flag_excludevm) {
+		ERRMSG("BHUPESH I Inside create_2nd_bitmap info->flag_excludevm is set.\n");
 		if (init_save_control() == FAILED)
 			return FALSE;
 		if (find_unused_vmemmap_pages() == FAILED)
@@ -11023,6 +11037,7 @@ int show_mem_usage(void)
 	uint64_t vmcoreinfo_addr, vmcoreinfo_len;
 	struct cycle cycle = {0};
 
+	ERRMSG("BHUPESH 2 Inside show_mem_usage calling is_crashkernel_mem_reserved.\n");
 	if (!is_crashkernel_mem_reserved()) {
 		ERRMSG("No memory is reserved for crashkernel!\n");
 		return FALSE;
@@ -11030,43 +11045,57 @@ int show_mem_usage(void)
 
 	info->dump_level = MAX_DUMP_LEVEL;
 
+	ERRMSG("BHUPESH 3 Inside show_mem_usage calling open_files_for_creating_dumpfile.\n");
 	if (!open_files_for_creating_dumpfile())
 		return FALSE;
 
+	ERRMSG("BHUPESH 4 Inside show_mem_usage calling get_elf_loads.\n");
 	if (!get_elf_loads(info->fd_memory, info->name_memory))
 		return FALSE;
 
+	ERRMSG("BHUPESH 5 Inside show_mem_usage calling get_page_offset.\n");
 	if (!get_page_offset())
 		return FALSE;
 
+	ERRMSG("BHUPESH 6 Inside show_mem_usage calling get_sys_kernel_vmcoreinfo.\n");
 	if (!get_sys_kernel_vmcoreinfo(&vmcoreinfo_addr, &vmcoreinfo_len))
 		return FALSE;
 
+	ERRMSG("BHUPESH 7 Inside show_mem_usage calling set_kcore_vmcoreinfo.\n");
 	if (!set_kcore_vmcoreinfo(vmcoreinfo_addr, vmcoreinfo_len))
 		return FALSE;
 
+	ERRMSG("BHUPESH 8 Inside show_mem_usage calling initial.\n");
 	if (!initial())
 		return FALSE;
 
+	ERRMSG("BHUPESH 9 Inside show_mem_usage calling open_dump_bitmap.\n");
 	if (!open_dump_bitmap())
 		return FALSE;
 
+	ERRMSG("BHUPESH 10 Inside show_mem_usage calling prepare_bitmap_buffer.\n");
 	if (!prepare_bitmap_buffer())
 		return FALSE;
 
 	pfn_memhole = info->max_mapnr;
 	first_cycle(0, info->max_mapnr, &cycle);
+	ERRMSG("BHUPESH 11 Inside show_mem_usage calling create_1st_bitmap.\n");
 	if (!create_1st_bitmap(&cycle))
 		return FALSE;
+	ERRMSG("BHUPESH 12 Inside show_mem_usage calling create_2nd_bitmap.\n");
 	if (!create_2nd_bitmap(&cycle))
 		return FALSE;
 
+	ERRMSG("BHUPESH 13 Inside show_mem_usage calling get_num_dumpable_cyclic.\n");
 	info->num_dumpable = get_num_dumpable_cyclic();
 
+	ERRMSG("BHUPESH 14 Inside show_mem_usage calling free_bitmap_buffer.\n");
 	free_bitmap_buffer();
 
+	ERRMSG("BHUPESH 15 Inside show_mem_usage calling print_mem_usage.\n");
 	print_mem_usage();
 
+	ERRMSG("BHUPESH 16 Inside show_mem_usage calling close_files_for_creating_dumpfile.\n");
 	if (!close_files_for_creating_dumpfile())
 		return FALSE;
 
@@ -11371,6 +11400,7 @@ main(int argc, char *argv[])
 			goto out;
 		}
 
+		ERRMSG("BHUPESH 1 calling show_mem_usage.\n");
 		if (!show_mem_usage())
 			goto out;
 	} else {

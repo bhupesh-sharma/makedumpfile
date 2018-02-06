@@ -169,11 +169,11 @@ dump_Elf_load(Elf64_Phdr *prog, int num_load)
 	pls->file_offset = prog->p_offset;
 	pls->file_size   = prog->p_filesz;
 
-	DEBUG_MSG("LOAD (%d)\n", num_load);
-	DEBUG_MSG("  phys_start : %llx\n", pls->phys_start);
-	DEBUG_MSG("  phys_end   : %llx\n", pls->phys_end);
-	DEBUG_MSG("  virt_start : %llx\n", pls->virt_start);
-	DEBUG_MSG("  virt_end   : %llx\n", pls->virt_end);
+	ERRMSG("LOAD (%d)\n", num_load);
+	ERRMSG("  phys_start : %llx\n", pls->phys_start);
+	ERRMSG("  phys_end   : %llx\n", pls->phys_end);
+	ERRMSG("  virt_start : %llx\n", pls->virt_start);
+	ERRMSG("  virt_end   : %llx\n", pls->virt_end);
 
 	return TRUE;
 }
@@ -376,9 +376,18 @@ int set_kcore_vmcoreinfo(uint64_t vmcoreinfo_addr, uint64_t vmcoreinfo_len)
 
 	for (i = 0; i < num_pt_loads; ++i) {
 		struct pt_load_segment *p = &pt_loads[i];
+		ERRMSG("LOAD (%d)\n", i);
+		ERRMSG("  phys_start : %llx\n", p->phys_start);
+		ERRMSG("  phys_end   : %llx\n", p->phys_end);
+		ERRMSG("  virt_start : %llx\n", p->virt_start);
+		ERRMSG("  virt_end   : %llx\n", p->virt_end);
+		ERRMSG("  file_offset: %llx\n", p->file_offset);
+		ERRMSG("  kvaddr     : %llx\n", kvaddr);
+
 		if ((kvaddr >= p->virt_start) && (kvaddr < p->virt_end)) {
 			offset = (off_t)(kvaddr - p->virt_start) +
 			(off_t)p->file_offset;
+			ERRMSG("  offset     : %llx\n", offset);
 			break;
 		}
 	}
