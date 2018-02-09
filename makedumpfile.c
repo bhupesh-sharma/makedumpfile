@@ -11090,7 +11090,14 @@ static struct option longopts[] = {
 	{"cyclic-buffer", required_argument, NULL, OPT_CYCLIC_BUFFER},
 	{"eppic", required_argument, NULL, OPT_EPPIC},
 	{"non-mmap", no_argument, NULL, OPT_NON_MMAP},
+#ifdef __aarch64__ 
+	/* VMLINUX file is required for aarch64 for get
+	 * the symbols required to calculate va_bits.
+	 */
+	{"mem-usage", required_argument, NULL, OPT_MEM_USAGE},
+#else
 	{"mem-usage", no_argument, NULL, OPT_MEM_USAGE},
+#endif
 	{"splitblock-size", required_argument, NULL, OPT_SPLITBLOCK_SIZE},
 	{"work-dir", required_argument, NULL, OPT_WORKING_DIR},
 	{"num-threads", required_argument, NULL, OPT_NUM_THREADS},
@@ -11202,6 +11209,20 @@ main(int argc, char *argv[])
 			break;
 		case OPT_MEM_USAGE:
 		       info->flag_mem_usage = 1;
+#ifdef __aarch64__
+			/* VMLINUX file is required for aarch64 for get
+			 * the symbols required to calculate va_bits and
+			 * it should be the 1st command parameter being
+			 * specified.
+			 */
+			if (strcmp(optarg, "/proc/kcore") == 0) {
+				MSG("vmlinux path should be 1st commandline parameter with --mem-usage option.\n");
+				goto out;
+			}
+			else {
+				info->name_vmlinux = optarg;
+			}
+#endif
 		       break;
 		case OPT_COMPRESS_SNAPPY:
 			info->flag_compress = DUMP_DH_COMPRESSED_SNAPPY;

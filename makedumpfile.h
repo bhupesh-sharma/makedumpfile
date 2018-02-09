@@ -2308,6 +2308,7 @@ struct elf_prstatus {
 /*
  * Function Prototype.
  */
+int open_kernel_file(void);
 mdf_pfn_t get_num_dumpable_cyclic(void);
 mdf_pfn_t get_num_dumpable_cyclic_withsplit(void);
 int get_loads_dumpfile_cyclic(void);
