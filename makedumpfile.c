@@ -11049,46 +11049,60 @@ int show_mem_usage(void)
 
 	info->dump_level = MAX_DUMP_LEVEL;
 
+	ERRMSG("BHUPESH A inside show_mem_usage calling open_files_for_creating_dumpfile!\n");
 	if (!open_files_for_creating_dumpfile())
 		return FALSE;
 
+	ERRMSG("BHUPESH B inside show_mem_usage calling get_elf_loads!\n");
 	if (!get_elf_loads(info->fd_memory, info->name_memory))
 		return FALSE;
 
+	ERRMSG("BHUPESH C inside show_mem_usage calling get_page_offset!\n");
 	if (!get_page_offset())
 		return FALSE;
 
+	ERRMSG("BHUPESH D inside show_mem_usage calling get_sys_kernel_vmcoreinfo!\n");
 	if (!get_sys_kernel_vmcoreinfo(&vmcoreinfo_addr, &vmcoreinfo_len))
 		return FALSE;
 
+	ERRMSG("BHUPESH E inside show_mem_usage calling set_kcore_vmcoreinfo!\n");
 	if (!set_kcore_vmcoreinfo(vmcoreinfo_addr, vmcoreinfo_len))
 		return FALSE;
 
+	ERRMSG("BHUPESH F inside show_mem_usage calling initial!\n");
 	if (!initial())
 		return FALSE;
 
+	ERRMSG("BHUPESH G inside show_mem_usage calling open_dump_bitmap!\n");
 	if (!open_dump_bitmap())
 		return FALSE;
 
+	ERRMSG("BHUPESH H inside show_mem_usage calling prepare_bitmap_buffer!\n");
 	if (!prepare_bitmap_buffer())
 		return FALSE;
 
 	pfn_memhole = info->max_mapnr;
 	first_cycle(0, info->max_mapnr, &cycle);
+	ERRMSG("BHUPESH I inside show_mem_usage calling create_1st_bitmap!\n");
 	if (!create_1st_bitmap(&cycle))
 		return FALSE;
+	ERRMSG("BHUPESH J inside show_mem_usage calling create_2nd_bitmap!\n");
 	if (!create_2nd_bitmap(&cycle))
 		return FALSE;
 
 	info->num_dumpable = get_num_dumpable_cyclic();
 
+	ERRMSG("BHUPESH K inside show_mem_usage calling free_bitmap_buffer!\n");
 	free_bitmap_buffer();
 
+	ERRMSG("BHUPESH L inside show_mem_usage calling print_mem_usage!\n");
 	print_mem_usage();
 
+	ERRMSG("BHUPESH M inside show_mem_usage calling close_files_for_creating_dumpfile!\n");
 	if (!close_files_for_creating_dumpfile())
 		return FALSE;
 
+	ERRMSG("BHUPESH N inside show_mem_usage returning TRUE!\n");
 	return TRUE;
 }
 

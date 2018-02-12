@@ -219,6 +219,52 @@ get_stext_symbol(void)
 	return(found ? kallsym : FALSE);
 }
 
+unsigned long
+get_kaslr_offset_arm64(unsigned long vaddr)
+{
+	unsigned int i;
+	char buf[BUFSIZE_FGETS], *endp;
+
+	ERRMSG("BHUPESH 1 inside get_kaslr_offset_arm64, !info->kaslr_offset:%lx, info->file_vmcoreinfo:%lx\n",
+			!info->kaslr_offset, info->file_vmcoreinfo);
+	if (!info->kaslr_offset && info->file_vmcoreinfo) {
+		if (fseek(info->file_vmcoreinfo, 0, SEEK_SET) < 0) {
+			ERRMSG("Can't seek the vmcoreinfo file(%s). %s\n",
+					info->name_vmcoreinfo, strerror(errno));
+			return FALSE;
+		}
+
+		while (fgets(buf, BUFSIZE_FGETS, info->file_vmcoreinfo)) {
+			i = strlen(buf);
+			if (!i)
+				break;
+			if (buf[i - 1] == '\n')
+				buf[i - 1] = '\0';
+			if (strncmp(buf, STR_KERNELOFFSET,
+					strlen(STR_KERNELOFFSET)) == 0) {
+				info->kaslr_offset =
+					strtoul(buf+strlen(STR_KERNELOFFSET),&endp,16);
+				ERRMSG("BHUPESH 2 inside get_kaslr_offset_arm64, info->kaslr_offset:%lx\n",
+					info->kaslr_offset);
+			}
+		}
+	}
+	if (vaddr >= info->page_offset &&
+			vaddr < info->page_offset + info->kaslr_offset) {
+		ERRMSG("BHUPESH 3 inside get_kaslr_offset_arm64, info->kaslr_offset:%lx\n",
+					info->kaslr_offset);
+		return info->kaslr_offset;
+	} else {
+		/*
+		 * TODO: we need to check if it is vmalloc/vmmemmap/module
+		 * address, we will have different offset
+		 */
+		ERRMSG("BHUPESH 4 inside get_kaslr_offset_arm64, info->kaslr_offset:%lx\n",
+					info->kaslr_offset);
+		return 0;
+	}
+}
+
 int
 get_machdep_info_arm64(void)
 {

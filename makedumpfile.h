@@ -940,6 +940,7 @@ static inline int stub_true() { return TRUE; }
 static inline int stub_true_ul(unsigned long x) { return TRUE; }
 static inline int stub_false() { return FALSE; }
 #ifdef __aarch64__
+unsigned long get_kaslr_offset_arm64(unsigned long vaddr);
 int get_phys_base_arm64(void);
 int get_machdep_info_arm64(void);
 unsigned long long vaddr_to_paddr_arm64(unsigned long vaddr);
@@ -951,7 +952,7 @@ int get_xen_info_arm64(void);
 #define get_phys_base()		get_phys_base_arm64()
 #define get_machdep_info()	get_machdep_info_arm64()
 #define get_versiondep_info()	get_versiondep_info_arm64()
-#define get_kaslr_offset(X)	stub_false()
+#define get_kaslr_offset(X)	get_kaslr_offset_arm64(X)
 #define get_xen_basic_info_arch(X) get_xen_basic_info_arm64(X)
 #define get_xen_info_arch(X) get_xen_info_arm64(X)
 #define is_phys_addr(X)		stub_true_ul(X)
