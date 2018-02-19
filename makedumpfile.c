@@ -11014,6 +11014,7 @@ static int get_sys_kernel_vmcoreinfo(uint64_t *addr, uint64_t *len)
 	*addr = (uint64_t) temp;
 	*len = (uint64_t) temp2;
 
+	ERRMSG("BHUPESH A inside get_sys_kernel_vmcoreinfo, *addr=%p, *len=%p!\n", *addr, *len);
 	fclose(fp);
 	return TRUE;
 }
@@ -11023,6 +11024,7 @@ int show_mem_usage(void)
 	uint64_t vmcoreinfo_addr, vmcoreinfo_len;
 	struct cycle cycle = {0};
 
+	ERRMSG("BHUPESH 1 inside show_mem_usage, calling is_crashkernel_mem_reserved!\n");
 	if (!is_crashkernel_mem_reserved()) {
 		ERRMSG("No memory is reserved for crashkernel!\n");
 		return FALSE;
@@ -11030,46 +11032,61 @@ int show_mem_usage(void)
 
 	info->dump_level = MAX_DUMP_LEVEL;
 
+	ERRMSG("BHUPESH 2 inside show_mem_usage, calling open_files_for_creating_dumpfile!\n");
 	if (!open_files_for_creating_dumpfile())
 		return FALSE;
 
+	ERRMSG("BHUPESH 3 inside show_mem_usage, calling get_elf_loads!\n");
 	if (!get_elf_loads(info->fd_memory, info->name_memory))
 		return FALSE;
 
+	ERRMSG("BHUPESH 4 inside show_mem_usage, calling get_page_offset!\n");
 	if (!get_page_offset())
 		return FALSE;
 
+	ERRMSG("BHUPESH 5 inside show_mem_usage, calling get_sys_kernel_vmcoreinfo!\n");
 	if (!get_sys_kernel_vmcoreinfo(&vmcoreinfo_addr, &vmcoreinfo_len))
 		return FALSE;
 
+	ERRMSG("BHUPESH 6 inside show_mem_usage, calling set_kcore_vmcoreinfo!\n");
 	if (!set_kcore_vmcoreinfo(vmcoreinfo_addr, vmcoreinfo_len))
 		return FALSE;
 
+	ERRMSG("BHUPESH 7 inside show_mem_usage, calling initial!\n");
 	if (!initial())
 		return FALSE;
 
+	ERRMSG("BHUPESH 8 inside show_mem_usage, calling open_dump_bitmap!\n");
 	if (!open_dump_bitmap())
 		return FALSE;
 
+	ERRMSG("BHUPESH 9 inside show_mem_usage, calling prepare_bitmap_buffer!\n");
 	if (!prepare_bitmap_buffer())
 		return FALSE;
 
+	ERRMSG("BHUPESH 10 inside show_mem_usage, calling first_cycle!\n");
 	pfn_memhole = info->max_mapnr;
 	first_cycle(0, info->max_mapnr, &cycle);
+	ERRMSG("BHUPESH 11 inside show_mem_usage, calling create_1st_bitmap!\n");
 	if (!create_1st_bitmap(&cycle))
 		return FALSE;
+	ERRMSG("BHUPESH 12 inside show_mem_usage, calling create_2nd_bitmap!\n");
 	if (!create_2nd_bitmap(&cycle))
 		return FALSE;
 
 	info->num_dumpable = get_num_dumpable_cyclic();
 
+	ERRMSG("BHUPESH 13 inside show_mem_usage, calling free_bitmap_buffer!\n");
 	free_bitmap_buffer();
 
+	ERRMSG("BHUPESH 14 inside show_mem_usage, calling print_mem_usage!\n");
 	print_mem_usage();
 
+	ERRMSG("BHUPESH 15 inside show_mem_usage, calling close_files_for_creating_dumpfile!\n");
 	if (!close_files_for_creating_dumpfile())
 		return FALSE;
 
+	ERRMSG("BHUPESH 16 inside show_mem_usage, return TRUE!\n");
 	return TRUE;
 }
 

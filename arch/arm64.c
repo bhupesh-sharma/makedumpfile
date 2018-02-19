@@ -219,6 +219,8 @@ get_xen_info_arm64(void)
 int
 get_versiondep_info_arm64(void)
 {
+	va_bits = 48;
+	info->page_offset = 0xffffffffffffffffUL << (va_bits - 1);
 	return TRUE;
 }
 
