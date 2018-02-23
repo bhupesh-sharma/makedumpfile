@@ -376,6 +376,15 @@ int set_kcore_vmcoreinfo(uint64_t vmcoreinfo_addr, uint64_t vmcoreinfo_len)
 
 	for (i = 0; i < num_pt_loads; ++i) {
 		struct pt_load_segment *p = &pt_loads[i];
+		MSG("LOAD (%d)\n", i);
+		MSG("  phys_start : %llx\n", p->phys_start);
+		MSG("  phys_end   : %llx\n", p->phys_end);
+		MSG("  virt_start : %llx\n", p->virt_start);
+		MSG("  virt_end   : %llx\n", p->virt_end);
+		MSG("  file_offset   : %llx\n", p->file_offset);
+		MSG("  file_size   : %llx\n", p->file_size);
+		MSG("  kvaddr   : %llx\n", kvaddr);
+
 		if ((kvaddr >= p->virt_start) && (kvaddr < p->virt_end)) {
 			offset = (off_t)(kvaddr - p->virt_start) +
 			(off_t)p->file_offset;

@@ -177,6 +177,101 @@ get_phys_base_arm64(void)
 	return TRUE;
 }
 
+unsigned long
+get_kaslr_offset_arm64(unsigned long vaddr)
+{
+	unsigned int i;
+	char buf[BUFSIZE_FGETS], *endp;
+
+	ERRMSG("BHUPESH 1 inside get_kaslr_offset_arm64, !info->kaslr_offset:%lx, info->file_vmcoreinfo:%lx\n",
+			!info->kaslr_offset, info->file_vmcoreinfo);
+	if (!info->kaslr_offset && info->file_vmcoreinfo) {
+		if (fseek(info->file_vmcoreinfo, 0, SEEK_SET) < 0) {
+			ERRMSG("Can't seek the vmcoreinfo file(%s). %s\n",
+					info->name_vmcoreinfo, strerror(errno));
+			return FALSE;
+		}
+
+		while (fgets(buf, BUFSIZE_FGETS, info->file_vmcoreinfo)) {
+			i = strlen(buf);
+			if (!i)
+				break;
+			if (buf[i - 1] == '\n')
+				buf[i - 1] = '\0';
+			if (strncmp(buf, STR_KERNELOFFSET,
+					strlen(STR_KERNELOFFSET)) == 0) {
+				info->kaslr_offset =
+					strtoul(buf+strlen(STR_KERNELOFFSET),&endp,16);
+				ERRMSG("BHUPESH 2 inside get_kaslr_offset_arm64, info->kaslr_offset:%lx\n",
+					info->kaslr_offset);
+			}
+		}
+	}
+	if (vaddr >= info->page_offset &&
+			vaddr < info->page_offset + info->kaslr_offset) {
+		ERRMSG("BHUPESH 3 inside get_kaslr_offset_arm64, info->kaslr_offset:%lx\n",
+					info->kaslr_offset);
+		return info->kaslr_offset;
+	} else {
+		/*
+		 * TODO: we need to check if it is vmalloc/vmmemmap/module
+		 * address, we will have different offset
+		 */
+		ERRMSG("BHUPESH 4 inside get_kaslr_offset_arm64, info->kaslr_offset:%lx\n",
+					info->kaslr_offset);
+		return 0;
+	}
+}
+
+ulong
+get_stext_symbol(void)
+{
+	int found;
+	FILE *fp;
+	char *symname = "_stext";
+	char buf[BUFSIZE];
+        char *kallsyms[MAXARGS];
+	//char *name_kallsyms_file = NULL;
+	char *name_kallsyms_file = "/proc/kallsyms";
+	ulong kallsym;
+
+	ERRMSG("BHUPESH inside get_stext_symbol 1, %s\n", name_kallsyms_file);
+	//strcpy(name_kallsyms_file, KALLSYMS_FILE_NAME);
+
+	if (!file_exists(name_kallsyms_file)) {
+		ERRMSG("(%s) does not exist, will not be able to read symbols. %s\n",
+		       name_kallsyms_file, strerror(errno));
+		return FALSE;
+	}
+
+	ERRMSG("BHUPESH inside get_stext_symbol 1a file exists calling fopen\n");
+ 	if ((fp = fopen("/proc/kallsyms", "r")) == NULL) {
+		ERRMSG("Cannot open (%s) to read symbols. %s\n",
+		        name_kallsyms_file, strerror(errno));
+                return FALSE;
+        }
+
+	ERRMSG("BHUPESH inside get_stext_symbol 1b\n");
+	found = FALSE;
+	kallsym = 0;
+
+	ERRMSG("BHUPESH inside get_stext_symbol 2\n");
+	while (!found && fgets(buf, BUFSIZE, fp) &&
+	    (parse_line(buf, kallsyms) == 3)) {
+		if (hexadecimal(kallsyms[0], 0) &&
+		    STREQ(kallsyms[2], "_stext")) {
+			kallsym = htol(kallsyms[0], RETURN_ON_ERROR, NULL);
+			found = TRUE;
+			break;
+		}
+	}
+	fclose(fp);
+
+	ERRMSG("BHUPESH _stext:%llx\n,", kallsym);
+	
+	return(found ? kallsym : FALSE);
+}
+
 int
 get_machdep_info_arm64(void)
 {
@@ -219,8 +314,16 @@ get_xen_info_arm64(void)
 int
 get_versiondep_info_arm64(void)
 {
+	ulong _stext;
+
+	_stext = get_stext_symbol();
+	ERRMSG("BHUPESH _stext:%lx\n,", _stext);
+	if (!_stext)
+		return FALSE;
+
 	va_bits = 48;
 	info->page_offset = 0xffffffffffffffffUL << (va_bits - 1);
+	ERRMSG("BHUPESH va_bits:%d, info->page_offset:%lx\n,", va_bits, info->page_offset);
 	return TRUE;
 }
 
