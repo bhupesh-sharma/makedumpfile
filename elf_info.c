@@ -376,9 +376,18 @@ int set_kcore_vmcoreinfo(uint64_t vmcoreinfo_addr, uint64_t vmcoreinfo_len)
 
 	for (i = 0; i < num_pt_loads; ++i) {
 		struct pt_load_segment *p = &pt_loads[i];
+		ERRMSG("LOAD (%d)\n", i);
+		ERRMSG("  phys_start : %llx\n", p->phys_start);
+		ERRMSG("  phys_end   : %llx\n", p->phys_end);
+		ERRMSG("  virt_start : %llx\n", p->virt_start);
+		ERRMSG("  virt_end   : %llx\n", p->virt_end);
+		ERRMSG("  file_offset: %llx\n", p->file_offset);
+		ERRMSG("  kvaddr     : %llx\n", kvaddr);
+
 		if ((kvaddr >= p->virt_start) && (kvaddr < p->virt_end)) {
 			offset = (off_t)(kvaddr - p->virt_start) +
 			(off_t)p->file_offset;
+			ERRMSG(" offset: %llx\n", offset);
 			break;
 		}
 	}
@@ -401,8 +410,10 @@ int set_kcore_vmcoreinfo(uint64_t vmcoreinfo_addr, uint64_t vmcoreinfo_len)
 		return FALSE;
 	}
 
+	ERRMSG("note=%p\n", *note);
 	size_desc   = note_descsz(note);
 	offset_desc = offset + offset_note_desc(note);
+	ERRMSG("size_desc=%lx, offset_desc=%lx\n", size_desc, offset_desc);
 
 	set_vmcoreinfo(offset_desc, size_desc);
 

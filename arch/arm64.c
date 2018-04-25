@@ -23,6 +23,18 @@
 #include "../makedumpfile.h"
 #include "../print_info.h"
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <sys/mman.h>
+#include <fcntl.h>
+
+#define DEV_MEM "/dev/mem"
+
+#define ALIGN_MASK(x, y)	(((x) + (y)) & ~(y))
+#define ALIGN(x, y)		ALIGN_MASK(x, (y) - 1)
+#define BUFSIZE			(256)
+
 typedef struct {
 	unsigned long pgd;
 } pgd_t;
@@ -182,6 +194,44 @@ get_phys_base_arm64(void)
 }
 
 ulong
+get_linearstart_addr_symbol(void)
+{
+	int found;
+	FILE *fp;
+	char buf[BUFSIZE];
+	char *kallsyms[MAXARGS];
+	ulong kallsym;
+
+	if (!file_exists("/proc/kallsyms")) {
+		ERRMSG("(%s) does not exist, will not be able to read symbols. %s\n",
+		       "/proc/kallsyms", strerror(errno));
+		return FALSE;
+	}
+
+	if ((fp = fopen("/proc/kallsyms", "r")) == NULL) {
+		ERRMSG("Cannot open (%s) to read symbols. %s\n",
+		       "/proc/kallsyms", strerror(errno));
+		return FALSE;
+	}
+
+	found = FALSE;
+	kallsym = 0;
+
+	while (!found && fgets(buf, BUFSIZE, fp) &&
+	      (parse_line(buf, kallsyms) == 3)) {
+		if (hexadecimal(kallsyms[0], 0) &&
+		    STREQ(kallsyms[2], "linearstart_addr")) {
+			kallsym = htol(kallsyms[0], 0);
+			found = TRUE;
+			break;
+		}
+	}
+	fclose(fp);
+
+	return(found ? kallsym : FALSE);
+}
+
+ulong
 get_stext_symbol(void)
 {
 	int found;
@@ -302,10 +352,104 @@ get_xen_info_arm64(void)
 	return ERROR;
 }
 
+static unsigned long long get_kernel_paddr(void)
+{
+	unsigned long long start;
+
+	if (parse_iomem_single("Kernel code\n", &start, NULL) == 0) {
+		printf("kernel load physical addr start = 0x%" PRIu64 "\n",
+				start);
+		return start;
+	}
+
+	printf("Cannot determine kernel physical load addr\n");
+	exit(3);
+}
+
+static unsigned long long get_kimage_voffset(void)
+{
+	unsigned long long kern_vaddr_start;
+	unsigned long long kern_paddr_start;
+
+	kern_paddr_start = get_kernel_paddr();
+	kern_vaddr_start = get_kernel_sym("_text");
+
+	return kern_vaddr_start - kern_paddr_start;
+}
+
+static unsigned long long kimg_to_phys(unsigned long long vaddr)
+{
+	return vaddr - get_kimage_voffset();
+}
+
+static void *map_addr(int fd, unsigned long size, off_t offset)
+{
+	unsigned long page_size = getpagesize();
+	unsigned long map_offset = offset & (page_size - 1);
+	size_t len = ALIGN(size + map_offset, page_size);
+	void *result;
+
+	result = mmap(0, len, PROT_READ, MAP_SHARED, fd, offset - map_offset);
+	if (result == MAP_FAILED) {
+		printf("Cannot mmap " DEV_MEM " offset: %#llx size: %lu:\n",
+				(unsigned long long)offset, size);
+		exit(5);
+	}
+	return result + map_offset;
+}
+
+static void unmap_addr(void *addr, unsigned long size)
+{
+	unsigned long page_size = getpagesize();
+	unsigned long map_offset = (uintptr_t)addr & (page_size - 1);
+	size_t len = ALIGN(size + map_offset, page_size);
+	int ret;
+
+	addr -= map_offset;
+
+	ret = munmap(addr, len);
+	if (ret < 0) {
+		printf("munmap failed\n");
+		exit(6);
+	}
+}
+
+static void init_linear_range_start_addr(void)
+{
+	int fd;
+	unsigned long long linear_range_start_paddr;
+	unsigned long long linear_range_start_addr;
+	void *linear_range_start_vaddr;
+
+	linear_range_start_paddr = kimg_to_phys(get_kernel_sym
+			("linear_region_start_addr"));
+
+	fd = open(DEV_MEM, O_RDONLY);
+	if (fd < 0) {
+		printf("Cannot open DEV_MEM \n");
+		exit(3);
+	}
+
+	linear_range_start_vaddr = map_addr(fd,
+			sizeof(linear_range_start_paddr),
+			linear_range_start_paddr);
+
+	linear_range_start_addr = *(unsigned long long *)linear_range_start_vaddr;
+	unmap_addr(linear_range_start_vaddr,
+		   sizeof(linear_range_start_paddr));
+	close(fd);
+
+	printf("linear_range_start_addr: %llx\n",
+			linear_range_start_addr);
+}
+
 int
 get_versiondep_info_arm64(void)
 {
 	ulong _stext;
+	ulong linearstart_addr;
+	ulong linearstart_addr_phys;
+	ulong linearstart;
 
 	_stext = get_stext_symbol();
 	if (!_stext) {
@@ -331,7 +475,17 @@ get_versiondep_info_arm64(void)
 
 	info->page_offset = (0xffffffffffffffffUL) << (va_bits - 1);
 
-	DEBUG_MSG("page_offset=%lx, va_bits=%d\n", info->page_offset,
+	init_linear_range_start_addr();
+	linearstart_addr = get_linearstart_addr_symbol();
+	linearstart_addr_phys = __pa(linearstart_addr);
+
+	if (!readmem(PADDR, (unsigned long long)linearstart_addr_phys, &linearstart, sizeof(linearstart))) {
+		ERRMSG("Can't read linearstart\n");
+		return NOT_PADDR;
+	}
+
+	ERRMSG("linearstart_addr=%lx, linearstart=%lx, page_offset=%lx, va_bits=%d\n",
+			linearstart_addr, linearstart, info->page_offset,
 			va_bits);
 
 	return TRUE;
