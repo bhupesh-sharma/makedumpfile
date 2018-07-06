@@ -265,6 +265,9 @@ get_xen_info_arm64(void)
 int
 get_versiondep_info_arm64(void)
 {
+	int i;
+	unsigned long long phys_start;
+	unsigned long long virt_start;
 	ulong _stext;
 
 	_stext = get_stext_symbol();
@@ -289,12 +292,22 @@ get_versiondep_info_arm64(void)
 		return FALSE;
 	}
 
-	info->page_offset = (0xffffffffffffffffUL) << (va_bits - 1);
+	if (get_num_pt_loads()) {
+		for (i = 0;
+			get_pt_load(i, &phys_start, NULL, &virt_start, NULL);
+			i++) {
+			if (virt_start != NOT_KV_ADDR
+					&& virt_start < __START_KERNEL_map
+					&& phys_start != NOT_PADDR && phys_start != 0x0000000010a80000) {
+				info->page_offset = virt_start - phys_start;
+				DEBUG_MSG("info->page_offset: %lx, VA_BITS: %x\n",
+						info->page_offset, va_bits);
+				return TRUE;
+			}
+		}
+	}
 
-	DEBUG_MSG("page_offset=%lx, va_bits=%d\n", info->page_offset,
-			va_bits);
-
-	return TRUE;
+	return FALSE;
 }
 
 /*
