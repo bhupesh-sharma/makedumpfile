@@ -48,6 +48,7 @@
 #define NOT_MEMMAP_ADDR	(0x0)
 #define NOT_KV_ADDR	(0x0)
 #define NOT_PADDR	(ULONGLONG_MAX)
+#define NOT_PADDR_ARM64	(0x0000000010a80000UL)
 #define BADADDR  	((ulong)(-1))
 
 #endif  /* COMMON_H */

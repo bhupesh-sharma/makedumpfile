@@ -2020,6 +2020,7 @@ struct domain_list {
 #define MFNS_PER_FRAME		(info->page_size / sizeof(unsigned long))
 
 #ifdef __aarch64__
+#define __START_KERNEL_map		(0xffffffff80000000UL)
 unsigned long long kvtop_xen_arm64(unsigned long kvaddr);
 #define kvtop_xen(X)	kvtop_xen_arm64(X)
 #endif /* aarch64 */
