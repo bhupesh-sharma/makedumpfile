@@ -303,10 +303,25 @@ get_xen_info_arm64(void)
 	return ERROR;
 }
 
+/* We want to exclude the kernel code mem region while calculating the
+ * info->page_offset for arm64 arch
+ */
+static struct memory_range kernel_code_mem_range;
+
+static int kernel_code_resource_callback(void *data, int nr,
+					  char *str,
+					  unsigned long base,
+					  unsigned long length)
+{
+	kernel_code_mem_range.start = base;
+	kernel_code_mem_range.end   = base + length - 1;
+	return 0;
+}
+
 int
 get_versiondep_info_arm64(void)
 {
-	int i;
+	int i, ret;
 	unsigned long long phys_start;
 	unsigned long long virt_start;
 	ulong _stext;
@@ -333,6 +348,13 @@ get_versiondep_info_arm64(void)
 		return FALSE;
 	}
 
+	ret = iomem_for_each_line("Kernel code\n",
+					kernel_code_resource_callback, NULL);
+	if (ret != 1) {
+		ERRMSG("Cannot find a proper Kernel code memory range in /proc/iomem\n");
+		return FALSE;
+	}
+
 	if (get_num_pt_loads()) {
 		for (i = 0;
 		    get_pt_load(i, &phys_start, NULL, &virt_start, NULL);
@@ -340,7 +362,7 @@ get_versiondep_info_arm64(void)
 			if (virt_start != NOT_KV_ADDR
 			    && virt_start < __START_KERNEL_map
 			    && phys_start != NOT_PADDR
-			    && phys_start != NOT_PADDR_ARM64) {
+			    && phys_start != kernel_code_mem_range.start) {
 				info->page_offset = virt_start - phys_start;
 				DEBUG_MSG("info->page_offset: %lx, VA_BITS: %d\n",
 						info->page_offset, va_bits);
