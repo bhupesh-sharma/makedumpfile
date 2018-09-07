@@ -1162,13 +1162,13 @@ check_release(void)
 }
 
 int
-open_vmcoreinfo(char *mode)
+open_vmcoreinfo(char *mode, char *name_vmcoreinfo)
 {
-	FILE *file_vmcoreinfo;
+	FILE *file_vmcoreinfo = NULL;
 
-	if ((file_vmcoreinfo = fopen(info->name_vmcoreinfo, mode)) == NULL) {
+	if ((file_vmcoreinfo = fopen(name_vmcoreinfo, mode)) == NULL) {
 		ERRMSG("Can't open the vmcoreinfo file(%s). %s\n",
-		    info->name_vmcoreinfo, strerror(errno));
+		    name_vmcoreinfo, strerror(errno));
 		return FALSE;
 	}
 	info->file_vmcoreinfo = file_vmcoreinfo;
@@ -1452,7 +1452,7 @@ open_files_for_generating_vmcoreinfo(void)
 	if (!open_kernel_file())
 		return FALSE;
 
-	if (!open_vmcoreinfo("w"))
+	if (!open_vmcoreinfo("w", info->name_vmcoreinfo))
 		return FALSE;
 
 	return TRUE;
@@ -1484,7 +1484,7 @@ int
 open_files_for_creating_dumpfile(void)
 {
 	if (info->flag_read_vmcoreinfo) {
-		if (!open_vmcoreinfo("r"))
+		if (!open_vmcoreinfo("r", info->name_vmcoreinfo))
 			return FALSE;
 	} else {
 		if (!open_kernel_file())
@@ -2128,185 +2128,185 @@ get_mem_type(void)
 }
 
 void
-write_vmcoreinfo_data(void)
+write_vmcoreinfo_data(FILE *file)
 {
 	/*
 	 * write 1st kernel's OSRELEASE
 	 */
-	fprintf(info->file_vmcoreinfo, "%s%s\n", STR_OSRELEASE,
+	fprintf(file, "%s%s\n", STR_OSRELEASE,
 	    info->release);
 
 	/*
 	 * write 1st kernel's PAGESIZE
 	 */
-	fprintf(info->file_vmcoreinfo, "%s%ld\n", STR_PAGESIZE,
+	fprintf(file, "%s%ld\n", STR_PAGESIZE,
 	    info->page_size);
 
 	/*
 	 * write the symbol of 1st kernel
 	 */
-	WRITE_SYMBOL("mem_map", mem_map);
-	WRITE_SYMBOL("vmem_map", vmem_map);
-	WRITE_SYMBOL("mem_section", mem_section);
-	WRITE_SYMBOL("pkmap_count", pkmap_count);
-	WRITE_SYMBOL("pkmap_count_next", pkmap_count_next);
-	WRITE_SYMBOL("system_utsname", system_utsname);
-	WRITE_SYMBOL("init_uts_ns", init_uts_ns);
-	WRITE_SYMBOL("_stext", _stext);
-	WRITE_SYMBOL("swapper_pg_dir", swapper_pg_dir);
-	WRITE_SYMBOL("init_level4_pgt", init_level4_pgt);
-	WRITE_SYMBOL("level4_kernel_pgt", level4_kernel_pgt);
-	WRITE_SYMBOL("init_top_pgt", init_top_pgt);
-	WRITE_SYMBOL("vmlist", vmlist);
-	WRITE_SYMBOL("vmap_area_list", vmap_area_list);
-	WRITE_SYMBOL("node_online_map", node_online_map);
-	WRITE_SYMBOL("node_states", node_states);
-	WRITE_SYMBOL("node_data", node_data);
-	WRITE_SYMBOL("pgdat_list", pgdat_list);
-	WRITE_SYMBOL("contig_page_data", contig_page_data);
-	WRITE_SYMBOL("log_buf", log_buf);
-	WRITE_SYMBOL("log_buf_len", log_buf_len);
-	WRITE_SYMBOL("log_end", log_end);
-	WRITE_SYMBOL("log_first_idx", log_first_idx);
-	WRITE_SYMBOL("clear_idx", clear_idx);
-	WRITE_SYMBOL("log_next_idx", log_next_idx);
-	WRITE_SYMBOL("max_pfn", max_pfn);
-	WRITE_SYMBOL("high_memory", high_memory);
-	WRITE_SYMBOL("node_remap_start_vaddr", node_remap_start_vaddr);
-	WRITE_SYMBOL("node_remap_end_vaddr", node_remap_end_vaddr);
-	WRITE_SYMBOL("node_remap_start_pfn", node_remap_start_pfn);
-	WRITE_SYMBOL("vmemmap_list", vmemmap_list);
-	WRITE_SYMBOL("mmu_psize_defs", mmu_psize_defs);
-	WRITE_SYMBOL("mmu_vmemmap_psize", mmu_vmemmap_psize);
-	WRITE_SYMBOL("cpu_pgd", cpu_pgd);
-	WRITE_SYMBOL("demote_segment_4k", demote_segment_4k);
-	WRITE_SYMBOL("cur_cpu_spec", cur_cpu_spec);
-	WRITE_SYMBOL("free_huge_page", free_huge_page);
+	WRITE_SYMBOL("mem_map", mem_map, file);
+	WRITE_SYMBOL("vmem_map", vmem_map, file);
+	WRITE_SYMBOL("mem_section", mem_section, file);
+	WRITE_SYMBOL("pkmap_count", pkmap_count, file);
+	WRITE_SYMBOL("pkmap_count_next", pkmap_count_next, file);
+	WRITE_SYMBOL("system_utsname", system_utsname, file);
+	WRITE_SYMBOL("init_uts_ns", init_uts_ns, file);
+	WRITE_SYMBOL("_stext", _stext, file);
+	WRITE_SYMBOL("swapper_pg_dir", swapper_pg_dir, file);
+	WRITE_SYMBOL("init_level4_pgt", init_level4_pgt, file);
+	WRITE_SYMBOL("level4_kernel_pgt", level4_kernel_pgt, file);
+	WRITE_SYMBOL("init_top_pgt", init_top_pgt, file);
+	WRITE_SYMBOL("vmlist", vmlist, file);
+	WRITE_SYMBOL("vmap_area_list", vmap_area_list, file);
+	WRITE_SYMBOL("node_online_map", node_online_map, file);
+	WRITE_SYMBOL("node_states", node_states, file);
+	WRITE_SYMBOL("node_data", node_data, file);
+	WRITE_SYMBOL("pgdat_list", pgdat_list, file);
+	WRITE_SYMBOL("contig_page_data", contig_page_data, file);
+	WRITE_SYMBOL("log_buf", log_buf, file);
+	WRITE_SYMBOL("log_buf_len", log_buf_len, file);
+	WRITE_SYMBOL("log_end", log_end, file);
+	WRITE_SYMBOL("log_first_idx", log_first_idx, file);
+	WRITE_SYMBOL("clear_idx", clear_idx, file);
+	WRITE_SYMBOL("log_next_idx", log_next_idx, file);
+	WRITE_SYMBOL("max_pfn", max_pfn, file);
+	WRITE_SYMBOL("high_memory", high_memory, file);
+	WRITE_SYMBOL("node_remap_start_vaddr", node_remap_start_vaddr, file);
+	WRITE_SYMBOL("node_remap_end_vaddr", node_remap_end_vaddr, file);
+	WRITE_SYMBOL("node_remap_start_pfn", node_remap_start_pfn, file);
+	WRITE_SYMBOL("vmemmap_list", vmemmap_list, file);
+	WRITE_SYMBOL("mmu_psize_defs", mmu_psize_defs, file);
+	WRITE_SYMBOL("mmu_vmemmap_psize", mmu_vmemmap_psize, file);
+	WRITE_SYMBOL("cpu_pgd", cpu_pgd, file);
+	WRITE_SYMBOL("demote_segment_4k", demote_segment_4k, file);
+	WRITE_SYMBOL("cur_cpu_spec", cur_cpu_spec, file);
+	WRITE_SYMBOL("free_huge_page", free_huge_page, file);
 
 	/*
 	 * write the structure size of 1st kernel
 	 */
-	WRITE_STRUCTURE_SIZE("page", page);
-	WRITE_STRUCTURE_SIZE("mem_section", mem_section);
-	WRITE_STRUCTURE_SIZE("pglist_data", pglist_data);
-	WRITE_STRUCTURE_SIZE("zone", zone);
-	WRITE_STRUCTURE_SIZE("free_area", free_area);
-	WRITE_STRUCTURE_SIZE("list_head", list_head);
-	WRITE_STRUCTURE_SIZE("node_memblk_s", node_memblk_s);
-	WRITE_STRUCTURE_SIZE("nodemask_t", nodemask_t);
-	WRITE_STRUCTURE_SIZE("pageflags", pageflags);
+	WRITE_STRUCTURE_SIZE("page", page, file);
+	WRITE_STRUCTURE_SIZE("mem_section", mem_section, file);
+	WRITE_STRUCTURE_SIZE("pglist_data", pglist_data, file);
+	WRITE_STRUCTURE_SIZE("zone", zone, file);
+	WRITE_STRUCTURE_SIZE("free_area", free_area, file);
+	WRITE_STRUCTURE_SIZE("list_head", list_head, file);
+	WRITE_STRUCTURE_SIZE("node_memblk_s", node_memblk_s, file);
+	WRITE_STRUCTURE_SIZE("nodemask_t", nodemask_t, file);
+	WRITE_STRUCTURE_SIZE("pageflags", pageflags, file);
 	if (info->flag_use_printk_log)
-		WRITE_STRUCTURE_SIZE("printk_log", printk_log);
+		WRITE_STRUCTURE_SIZE("printk_log", printk_log, file);
 	else
-		WRITE_STRUCTURE_SIZE("log", printk_log);
-	WRITE_STRUCTURE_SIZE("vmemmap_backing", vmemmap_backing);
-	WRITE_STRUCTURE_SIZE("mmu_psize_def", mmu_psize_def);
+		WRITE_STRUCTURE_SIZE("log", printk_log, file);
+	WRITE_STRUCTURE_SIZE("vmemmap_backing", vmemmap_backing, file);
+	WRITE_STRUCTURE_SIZE("mmu_psize_def", mmu_psize_def, file);
 
 	/*
 	 * write the member offset of 1st kernel
 	 */
-	WRITE_MEMBER_OFFSET("page.flags", page.flags);
+	WRITE_MEMBER_OFFSET("page.flags", page.flags, file);
 	if (info->flag_use_count)
-		WRITE_MEMBER_OFFSET("page._count", page._refcount);
+		WRITE_MEMBER_OFFSET("page._count", page._refcount, file);
 	else
-		WRITE_MEMBER_OFFSET("page._refcount", page._refcount);
-	WRITE_MEMBER_OFFSET("page.mapping", page.mapping);
-	WRITE_MEMBER_OFFSET("page.lru", page.lru);
-	WRITE_MEMBER_OFFSET("page._mapcount", page._mapcount);
-	WRITE_MEMBER_OFFSET("page.private", page.private);
-	WRITE_MEMBER_OFFSET("page.compound_dtor", page.compound_dtor);
-	WRITE_MEMBER_OFFSET("page.compound_order", page.compound_order);
-	WRITE_MEMBER_OFFSET("page.compound_head", page.compound_head);
+		WRITE_MEMBER_OFFSET("page._refcount", page._refcount, file);
+	WRITE_MEMBER_OFFSET("page.mapping", page.mapping, file);
+	WRITE_MEMBER_OFFSET("page.lru", page.lru, file);
+	WRITE_MEMBER_OFFSET("page._mapcount", page._mapcount, file);
+	WRITE_MEMBER_OFFSET("page.private", page.private, file);
+	WRITE_MEMBER_OFFSET("page.compound_dtor", page.compound_dtor, file);
+	WRITE_MEMBER_OFFSET("page.compound_order", page.compound_order, file);
+	WRITE_MEMBER_OFFSET("page.compound_head", page.compound_head, file);
 	WRITE_MEMBER_OFFSET("mem_section.section_mem_map",
-	    mem_section.section_mem_map);
-	WRITE_MEMBER_OFFSET("pglist_data.node_zones", pglist_data.node_zones);
-	WRITE_MEMBER_OFFSET("pglist_data.nr_zones", pglist_data.nr_zones);
+	    mem_section.section_mem_map, file);
+	WRITE_MEMBER_OFFSET("pglist_data.node_zones", pglist_data.node_zones, file);
+	WRITE_MEMBER_OFFSET("pglist_data.nr_zones", pglist_data.nr_zones, file);
 	WRITE_MEMBER_OFFSET("pglist_data.node_mem_map",
-	    pglist_data.node_mem_map);
+	    pglist_data.node_mem_map, file);
 	WRITE_MEMBER_OFFSET("pglist_data.node_start_pfn",
-	    pglist_data.node_start_pfn);
+	    pglist_data.node_start_pfn, file);
 	WRITE_MEMBER_OFFSET("pglist_data.node_spanned_pages",
-	    pglist_data.node_spanned_pages);
-	WRITE_MEMBER_OFFSET("pglist_data.pgdat_next", pglist_data.pgdat_next);
-	WRITE_MEMBER_OFFSET("zone.free_pages", zone.free_pages);
-	WRITE_MEMBER_OFFSET("zone.free_area", zone.free_area);
-	WRITE_MEMBER_OFFSET("zone.vm_stat", zone.vm_stat);
-	WRITE_MEMBER_OFFSET("zone.spanned_pages", zone.spanned_pages);
-	WRITE_MEMBER_OFFSET("free_area.free_list", free_area.free_list);
-	WRITE_MEMBER_OFFSET("list_head.next", list_head.next);
-	WRITE_MEMBER_OFFSET("list_head.prev", list_head.prev);
-	WRITE_MEMBER_OFFSET("node_memblk_s.start_paddr", node_memblk_s.start_paddr);
-	WRITE_MEMBER_OFFSET("node_memblk_s.size", node_memblk_s.size);
-	WRITE_MEMBER_OFFSET("node_memblk_s.nid", node_memblk_s.nid);
-	WRITE_MEMBER_OFFSET("vm_struct.addr", vm_struct.addr);
-	WRITE_MEMBER_OFFSET("vmap_area.va_start", vmap_area.va_start);
-	WRITE_MEMBER_OFFSET("vmap_area.list", vmap_area.list);
+	    pglist_data.node_spanned_pages, file);
+	WRITE_MEMBER_OFFSET("pglist_data.pgdat_next", pglist_data.pgdat_next, file);
+	WRITE_MEMBER_OFFSET("zone.free_pages", zone.free_pages, file);
+	WRITE_MEMBER_OFFSET("zone.free_area", zone.free_area, file);
+	WRITE_MEMBER_OFFSET("zone.vm_stat", zone.vm_stat, file);
+	WRITE_MEMBER_OFFSET("zone.spanned_pages", zone.spanned_pages, file);
+	WRITE_MEMBER_OFFSET("free_area.free_list", free_area.free_list, file);
+	WRITE_MEMBER_OFFSET("list_head.next", list_head.next, file);
+	WRITE_MEMBER_OFFSET("list_head.prev", list_head.prev, file);
+	WRITE_MEMBER_OFFSET("node_memblk_s.start_paddr", node_memblk_s.start_paddr, file);
+	WRITE_MEMBER_OFFSET("node_memblk_s.size", node_memblk_s.size, file);
+	WRITE_MEMBER_OFFSET("node_memblk_s.nid", node_memblk_s.nid, file);
+	WRITE_MEMBER_OFFSET("vm_struct.addr", vm_struct.addr, file);
+	WRITE_MEMBER_OFFSET("vmap_area.va_start", vmap_area.va_start, file);
+	WRITE_MEMBER_OFFSET("vmap_area.list", vmap_area.list, file);
 	if (info->flag_use_printk_log) {
-		WRITE_MEMBER_OFFSET("printk_log.ts_nsec", printk_log.ts_nsec);
-		WRITE_MEMBER_OFFSET("printk_log.len", printk_log.len);
-		WRITE_MEMBER_OFFSET("printk_log.text_len", printk_log.text_len);
+		WRITE_MEMBER_OFFSET("printk_log.ts_nsec", printk_log.ts_nsec, file);
+		WRITE_MEMBER_OFFSET("printk_log.len", printk_log.len, file);
+		WRITE_MEMBER_OFFSET("printk_log.text_len", printk_log.text_len, file);
 	} else {
 		/* Compatibility with pre-3.11-rc4 */
-		WRITE_MEMBER_OFFSET("log.ts_nsec", printk_log.ts_nsec);
-		WRITE_MEMBER_OFFSET("log.len", printk_log.len);
-		WRITE_MEMBER_OFFSET("log.text_len", printk_log.text_len);
+		WRITE_MEMBER_OFFSET("log.ts_nsec", printk_log.ts_nsec, file);
+		WRITE_MEMBER_OFFSET("log.len", printk_log.len, file);
+		WRITE_MEMBER_OFFSET("log.text_len", printk_log.text_len, file);
 	}
-	WRITE_MEMBER_OFFSET("vmemmap_backing.phys", vmemmap_backing.phys);
+	WRITE_MEMBER_OFFSET("vmemmap_backing.phys", vmemmap_backing.phys, file);
 	WRITE_MEMBER_OFFSET("vmemmap_backing.virt_addr",
-	    vmemmap_backing.virt_addr);
-	WRITE_MEMBER_OFFSET("vmemmap_backing.list", vmemmap_backing.list);
-	WRITE_MEMBER_OFFSET("mmu_psize_def.shift", mmu_psize_def.shift);
-	WRITE_MEMBER_OFFSET("cpu_spec.mmu_features", cpu_spec.mmu_features);
+	    vmemmap_backing.virt_addr, file);
+	WRITE_MEMBER_OFFSET("vmemmap_backing.list", vmemmap_backing.list, file);
+	WRITE_MEMBER_OFFSET("mmu_psize_def.shift", mmu_psize_def.shift, file);
+	WRITE_MEMBER_OFFSET("cpu_spec.mmu_features", cpu_spec.mmu_features, file);
 
 	if (SYMBOL(node_data) != NOT_FOUND_SYMBOL)
-		WRITE_ARRAY_LENGTH("node_data", node_data);
+		WRITE_ARRAY_LENGTH("node_data", node_data, file);
 	if (SYMBOL(pgdat_list) != NOT_FOUND_SYMBOL)
-		WRITE_ARRAY_LENGTH("pgdat_list", pgdat_list);
+		WRITE_ARRAY_LENGTH("pgdat_list", pgdat_list, file);
 	if (SYMBOL(mem_section) != NOT_FOUND_SYMBOL)
-		WRITE_ARRAY_LENGTH("mem_section", mem_section);
+		WRITE_ARRAY_LENGTH("mem_section", mem_section, file);
 	if (SYMBOL(node_memblk) != NOT_FOUND_SYMBOL)
-		WRITE_ARRAY_LENGTH("node_memblk", node_memblk);
+		WRITE_ARRAY_LENGTH("node_memblk", node_memblk, file);
 	if (SYMBOL(node_remap_start_pfn) != NOT_FOUND_SYMBOL)
 		WRITE_ARRAY_LENGTH("node_remap_start_pfn",
-				   node_remap_start_pfn);
+				   node_remap_start_pfn, file);
 
-	WRITE_ARRAY_LENGTH("zone.free_area", zone.free_area);
-	WRITE_ARRAY_LENGTH("free_area.free_list", free_area.free_list);
+	WRITE_ARRAY_LENGTH("zone.free_area", zone.free_area, file);
+	WRITE_ARRAY_LENGTH("free_area.free_list", free_area.free_list, file);
 
-	WRITE_NUMBER("NR_FREE_PAGES", NR_FREE_PAGES);
-	WRITE_NUMBER("N_ONLINE", N_ONLINE);
-	WRITE_NUMBER("pgtable_l5_enabled", pgtable_l5_enabled);
+	WRITE_NUMBER("NR_FREE_PAGES", NR_FREE_PAGES, file);
+	WRITE_NUMBER("N_ONLINE", N_ONLINE, file);
+	WRITE_NUMBER("pgtable_l5_enabled", pgtable_l5_enabled, file);
 
-	WRITE_NUMBER("PG_lru", PG_lru);
-	WRITE_NUMBER("PG_private", PG_private);
-	WRITE_NUMBER("PG_head_mask", PG_head_mask);
-	WRITE_NUMBER("PG_swapcache", PG_swapcache);
-	WRITE_NUMBER("PG_swapbacked", PG_swapbacked);
-	WRITE_NUMBER("PG_buddy", PG_buddy);
-	WRITE_NUMBER("PG_slab", PG_slab);
-	WRITE_NUMBER("PG_hwpoison", PG_hwpoison);
+	WRITE_NUMBER("PG_lru", PG_lru, file);
+	WRITE_NUMBER("PG_private", PG_private, file);
+	WRITE_NUMBER("PG_head_mask", PG_head_mask, file);
+	WRITE_NUMBER("PG_swapcache", PG_swapcache, file);
+	WRITE_NUMBER("PG_swapbacked", PG_swapbacked, file);
+	WRITE_NUMBER("PG_buddy", PG_buddy, file);
+	WRITE_NUMBER("PG_slab", PG_slab, file);
+	WRITE_NUMBER("PG_hwpoison", PG_hwpoison, file);
 
-	WRITE_NUMBER("PAGE_BUDDY_MAPCOUNT_VALUE", PAGE_BUDDY_MAPCOUNT_VALUE);
-	WRITE_NUMBER("phys_base", phys_base);
+	WRITE_NUMBER("PAGE_BUDDY_MAPCOUNT_VALUE", PAGE_BUDDY_MAPCOUNT_VALUE, file);
+	WRITE_NUMBER("phys_base", phys_base, file);
 
-	WRITE_NUMBER("HUGETLB_PAGE_DTOR", HUGETLB_PAGE_DTOR);
+	WRITE_NUMBER("HUGETLB_PAGE_DTOR", HUGETLB_PAGE_DTOR, file);
 #ifdef __aarch64__
-	WRITE_NUMBER("VA_BITS", VA_BITS);
-	WRITE_NUMBER_UNSIGNED("PHYS_OFFSET", PHYS_OFFSET);
-	WRITE_NUMBER_UNSIGNED("kimage_voffset", kimage_voffset);
+	WRITE_NUMBER("VA_BITS", VA_BITS, file);
+	WRITE_NUMBER_UNSIGNED("PHYS_OFFSET", PHYS_OFFSET, file);
+	WRITE_NUMBER_UNSIGNED("kimage_voffset", kimage_voffset, file);
 #endif
 
 	if (info->phys_base)
-		fprintf(info->file_vmcoreinfo, "%s%lu\n", STR_NUMBER("phys_base"),
+		fprintf(file, "%s%lu\n", STR_NUMBER("phys_base"),
 			info->phys_base);
 	if (info->kaslr_offset)
-		fprintf(info->file_vmcoreinfo, "%s%lx\n", STR_KERNELOFFSET,
+		fprintf(file, "%s%lx\n", STR_KERNELOFFSET,
 			info->kaslr_offset);
 
 	/*
 	 * write the source file of 1st kernel
 	 */
-	WRITE_SRCFILE("pud_t", pud_t);
+	WRITE_SRCFILE("pud_t", pud_t, file);
 }
 
 int
@@ -2343,26 +2343,26 @@ generate_vmcoreinfo(void)
 		return FALSE;
 	}
 
-	write_vmcoreinfo_data();
+	write_vmcoreinfo_data(info->file_vmcoreinfo);
 
 	return TRUE;
 }
 
 int
-read_vmcoreinfo_basic_info(void)
+read_vmcoreinfo_basic_info(char *name_vmcoreinfo, FILE *file)
 {
 	time_t tv_sec = 0;
 	long page_size = FALSE;
 	char buf[BUFSIZE_FGETS], *endp;
 	unsigned int get_release = FALSE, i;
 
-	if (fseek(info->file_vmcoreinfo, 0, SEEK_SET) < 0) {
+	if (fseek(file, 0, SEEK_SET) < 0) {
 		ERRMSG("Can't seek the vmcoreinfo file(%s). %s\n",
-		    info->name_vmcoreinfo, strerror(errno));
+		    name_vmcoreinfo, strerror(errno));
 		return FALSE;
 	}
 
-	while (fgets(buf, BUFSIZE_FGETS, info->file_vmcoreinfo)) {
+	while (fgets(buf, BUFSIZE_FGETS, file)) {
 		i = strlen(buf);
 		if (!i)
 			break;
@@ -2380,12 +2380,12 @@ read_vmcoreinfo_basic_info(void)
 			if ((!page_size || page_size == LONG_MAX)
 			    || strlen(endp) != 0) {
 				ERRMSG("Invalid data in %s: %s",
-				    info->name_vmcoreinfo, buf);
+				    name_vmcoreinfo, buf);
 				return FALSE;
 			}
 			if (!set_page_size(page_size)) {
 				ERRMSG("Invalid data in %s: %s",
-				    info->name_vmcoreinfo, buf);
+				    name_vmcoreinfo, buf);
 				return FALSE;
 			}
 		}
@@ -2394,7 +2394,7 @@ read_vmcoreinfo_basic_info(void)
 			if ((!tv_sec || tv_sec == LONG_MAX)
 			    || strlen(endp) != 0) {
 				ERRMSG("Invalid data in %s: %s",
-				    info->name_vmcoreinfo, buf);
+				    name_vmcoreinfo, buf);
 				return FALSE;
 			}
 			info->timestamp.tv_sec = tv_sec;
@@ -2411,27 +2411,30 @@ read_vmcoreinfo_basic_info(void)
 		    strlen(STR_CONFIG_PGTABLE_4)) == 0)
 			vt.mem_flags |= MEMORY_PAGETABLE_4L;
 	}
+#if 0
 	if (!get_release || !info->page_size) {
-		ERRMSG("Invalid format in %s", info->name_vmcoreinfo);
+		ERRMSG("get_release=%d, info->page_size=%lx\n", get_release, info->page_size);
+		ERRMSG("Invalid format in %s", name_vmcoreinfo);
 		return FALSE;
 	}
+#endif
 	return TRUE;
 }
 
 unsigned long
-read_vmcoreinfo_symbol(char *str_symbol)
+read_vmcoreinfo_symbol(char *str_symbol, char *name_vmcoreinfo, FILE *file)
 {
 	unsigned long symbol = NOT_FOUND_SYMBOL;
 	char buf[BUFSIZE_FGETS], *endp;
 	unsigned int i;
 
-	if (fseek(info->file_vmcoreinfo, 0, SEEK_SET) < 0) {
+	if (fseek(file, 0, SEEK_SET) < 0) {
 		ERRMSG("Can't seek the vmcoreinfo file(%s). %s\n",
-		    info->name_vmcoreinfo, strerror(errno));
+		    name_vmcoreinfo, strerror(errno));
 		return INVALID_SYMBOL_DATA;
 	}
 
-	while (fgets(buf, BUFSIZE_FGETS, info->file_vmcoreinfo)) {
+	while (fgets(buf, BUFSIZE_FGETS, file)) {
 		i = strlen(buf);
 		if (!i)
 			break;
@@ -2442,7 +2445,7 @@ read_vmcoreinfo_symbol(char *str_symbol)
 			if ((!symbol || symbol == ULONG_MAX)
 			    || strlen(endp) != 0) {
 				ERRMSG("Invalid data in %s: %s",
-				    info->name_vmcoreinfo, buf);
+				    name_vmcoreinfo, buf);
 				return INVALID_SYMBOL_DATA;
 			}
 			break;
@@ -2452,19 +2455,19 @@ read_vmcoreinfo_symbol(char *str_symbol)
 }
 
 unsigned long
-read_vmcoreinfo_ulong(char *str_structure)
+read_vmcoreinfo_ulong(char *str_structure, char *name_vmcoreinfo, FILE *file)
 {
 	long data = NOT_FOUND_LONG_VALUE;
 	char buf[BUFSIZE_FGETS], *endp;
 	unsigned int i;
 
-	if (fseek(info->file_vmcoreinfo, 0, SEEK_SET) < 0) {
+	if (fseek(file, 0, SEEK_SET) < 0) {
 		ERRMSG("Can't seek the vmcoreinfo file(%s). %s\n",
-		    info->name_vmcoreinfo, strerror(errno));
+		    name_vmcoreinfo, strerror(errno));
 		return INVALID_STRUCTURE_DATA;
 	}
 
-	while (fgets(buf, BUFSIZE_FGETS, info->file_vmcoreinfo)) {
+	while (fgets(buf, BUFSIZE_FGETS, file)) {
 		i = strlen(buf);
 		if (!i)
 			break;
@@ -2476,7 +2479,7 @@ read_vmcoreinfo_ulong(char *str_structure)
 				data = strtoul(buf + strlen(str_structure), &endp, 16);
 			if ((data == LONG_MAX) || strlen(endp) != 0) {
 				ERRMSG("Invalid data in %s: %s",
-				    info->name_vmcoreinfo, buf);
+				    name_vmcoreinfo, buf);
 				return INVALID_STRUCTURE_DATA;
 			}
 			break;
@@ -2486,19 +2489,19 @@ read_vmcoreinfo_ulong(char *str_structure)
 }
 
 long
-read_vmcoreinfo_long(char *str_structure)
+read_vmcoreinfo_long(char *str_structure, char *name_vmcoreinfo, FILE *file)
 {
 	long data = NOT_FOUND_LONG_VALUE;
 	char buf[BUFSIZE_FGETS], *endp;
 	unsigned int i;
 
-	if (fseek(info->file_vmcoreinfo, 0, SEEK_SET) < 0) {
+	if (fseek(file, 0, SEEK_SET) < 0) {
 		ERRMSG("Can't seek the vmcoreinfo file(%s). %s\n",
-		    info->name_vmcoreinfo, strerror(errno));
+		    name_vmcoreinfo, strerror(errno));
 		return INVALID_STRUCTURE_DATA;
 	}
 
-	while (fgets(buf, BUFSIZE_FGETS, info->file_vmcoreinfo)) {
+	while (fgets(buf, BUFSIZE_FGETS, file)) {
 		i = strlen(buf);
 		if (!i)
 			break;
@@ -2510,7 +2513,7 @@ read_vmcoreinfo_long(char *str_structure)
 				data = strtol(buf + strlen(str_structure), &endp, 16);
 			if ((data == LONG_MAX) || strlen(endp) != 0) {
 				ERRMSG("Invalid data in %s: %s",
-				    info->name_vmcoreinfo, buf);
+				    name_vmcoreinfo, buf);
 				return INVALID_STRUCTURE_DATA;
 			}
 			break;
@@ -2520,18 +2523,18 @@ read_vmcoreinfo_long(char *str_structure)
 }
 
 int
-read_vmcoreinfo_string(char *str_in, char *str_out)
+read_vmcoreinfo_string(char *str_in, char *str_out, char *name_vmcoreinfo, FILE *file)
 {
 	char buf[BUFSIZE_FGETS];
 	unsigned int i;
 
-	if (fseek(info->file_vmcoreinfo, 0, SEEK_SET) < 0) {
+	if (fseek(file, 0, SEEK_SET) < 0) {
 		ERRMSG("Can't seek the vmcoreinfo file(%s). %s\n",
-		    info->name_vmcoreinfo, strerror(errno));
+		    name_vmcoreinfo, strerror(errno));
 		return FALSE;
 	}
 
-	while (fgets(buf, BUFSIZE_FGETS, info->file_vmcoreinfo)) {
+	while (fgets(buf, BUFSIZE_FGETS, file)) {
 		i = strlen(buf);
 		if (!i)
 			break;
@@ -2546,204 +2549,213 @@ read_vmcoreinfo_string(char *str_in, char *str_out)
 }
 
 int
-read_vmcoreinfo(void)
+read_vmcoreinfo(char *name_vmcoreinfo, FILE *file)
 {
-	if (!read_vmcoreinfo_basic_info())
+	if (!read_vmcoreinfo_basic_info(name_vmcoreinfo, file))
 		return FALSE;
 
-	READ_SYMBOL("mem_map", mem_map);
-	READ_SYMBOL("vmem_map", vmem_map);
-	READ_SYMBOL("mem_section", mem_section);
-	READ_SYMBOL("pkmap_count", pkmap_count);
-	READ_SYMBOL("pkmap_count_next", pkmap_count_next);
-	READ_SYMBOL("system_utsname", system_utsname);
-	READ_SYMBOL("init_uts_ns", init_uts_ns);
-	READ_SYMBOL("_stext", _stext);
-	READ_SYMBOL("swapper_pg_dir", swapper_pg_dir);
-	READ_SYMBOL("init_level4_pgt", init_level4_pgt);
-	READ_SYMBOL("level4_kernel_pgt", level4_kernel_pgt);
-	READ_SYMBOL("init_top_pgt", init_top_pgt);
-	READ_SYMBOL("vmlist", vmlist);
-	READ_SYMBOL("vmap_area_list", vmap_area_list);
-	READ_SYMBOL("node_online_map", node_online_map);
-	READ_SYMBOL("node_states", node_states);
-	READ_SYMBOL("node_data", node_data);
-	READ_SYMBOL("pgdat_list", pgdat_list);
-	READ_SYMBOL("contig_page_data", contig_page_data);
-	READ_SYMBOL("log_buf", log_buf);
-	READ_SYMBOL("log_buf_len", log_buf_len);
-	READ_SYMBOL("log_end", log_end);
-	READ_SYMBOL("log_first_idx", log_first_idx);
-	READ_SYMBOL("clear_idx", clear_idx);
-	READ_SYMBOL("log_next_idx", log_next_idx);
-	READ_SYMBOL("max_pfn", max_pfn);
-	READ_SYMBOL("high_memory", high_memory);
-	READ_SYMBOL("node_remap_start_vaddr", node_remap_start_vaddr);
-	READ_SYMBOL("node_remap_end_vaddr", node_remap_end_vaddr);
-	READ_SYMBOL("node_remap_start_pfn", node_remap_start_pfn);
-	READ_SYMBOL("vmemmap_list", vmemmap_list);
-	READ_SYMBOL("mmu_psize_defs", mmu_psize_defs);
-	READ_SYMBOL("mmu_vmemmap_psize", mmu_vmemmap_psize);
-	READ_SYMBOL("cpu_pgd", cpu_pgd);
-	READ_SYMBOL("demote_segment_4k", demote_segment_4k);
-	READ_SYMBOL("cur_cpu_spec", cur_cpu_spec);
-	READ_SYMBOL("free_huge_page", free_huge_page);
+	READ_SYMBOL("mem_map", mem_map, name_vmcoreinfo, file);
+	READ_SYMBOL("vmem_map", vmem_map, name_vmcoreinfo, file);
+	READ_SYMBOL("mem_section", mem_section, name_vmcoreinfo, file);
+	READ_SYMBOL("pkmap_count", pkmap_count, name_vmcoreinfo, file);
+	READ_SYMBOL("pkmap_count_next", pkmap_count_next, name_vmcoreinfo, file);
+	READ_SYMBOL("system_utsname", system_utsname, name_vmcoreinfo, file);
+	READ_SYMBOL("init_uts_ns", init_uts_ns, name_vmcoreinfo, file);
+	READ_SYMBOL("_stext", _stext, name_vmcoreinfo, file);
+	READ_SYMBOL("swapper_pg_dir", swapper_pg_dir, name_vmcoreinfo, file);
+	READ_SYMBOL("init_level4_pgt", init_level4_pgt, name_vmcoreinfo, file);
+	READ_SYMBOL("level4_kernel_pgt", level4_kernel_pgt, name_vmcoreinfo, file);
+	READ_SYMBOL("init_top_pgt", init_top_pgt, name_vmcoreinfo, file);
+	READ_SYMBOL("vmlist", vmlist, name_vmcoreinfo, file);
+	READ_SYMBOL("vmap_area_list", vmap_area_list, name_vmcoreinfo, file);
+	READ_SYMBOL("node_online_map", node_online_map, name_vmcoreinfo, file);
+	READ_SYMBOL("node_states", node_states, name_vmcoreinfo, file);
+	READ_SYMBOL("node_data", node_data, name_vmcoreinfo, file);
+	READ_SYMBOL("pgdat_list", pgdat_list, name_vmcoreinfo, file);
+	READ_SYMBOL("contig_page_data", contig_page_data, name_vmcoreinfo, file);
+	READ_SYMBOL("log_buf", log_buf, name_vmcoreinfo, file);
+	READ_SYMBOL("log_buf_len", log_buf_len, name_vmcoreinfo, file);
+	READ_SYMBOL("log_end", log_end, name_vmcoreinfo, file);
+	READ_SYMBOL("log_first_idx", log_first_idx, name_vmcoreinfo, file);
+	READ_SYMBOL("clear_idx", clear_idx, name_vmcoreinfo, file);
+	READ_SYMBOL("log_next_idx", log_next_idx, name_vmcoreinfo, file);
+	READ_SYMBOL("max_pfn", max_pfn, name_vmcoreinfo, file);
+	READ_SYMBOL("high_memory", high_memory, name_vmcoreinfo, file);
+	READ_SYMBOL("node_remap_start_vaddr", node_remap_start_vaddr, name_vmcoreinfo, file);
+	READ_SYMBOL("node_remap_end_vaddr", node_remap_end_vaddr, name_vmcoreinfo, file);
+	READ_SYMBOL("node_remap_start_pfn", node_remap_start_pfn, name_vmcoreinfo, file);
+	READ_SYMBOL("vmemmap_list", vmemmap_list, name_vmcoreinfo, file);
+	READ_SYMBOL("mmu_psize_defs", mmu_psize_defs, name_vmcoreinfo, file);
+	READ_SYMBOL("mmu_vmemmap_psize", mmu_vmemmap_psize, name_vmcoreinfo, file);
+	READ_SYMBOL("cpu_pgd", cpu_pgd, name_vmcoreinfo, file);
+	READ_SYMBOL("demote_segment_4k", demote_segment_4k, name_vmcoreinfo, file);
+	READ_SYMBOL("cur_cpu_spec", cur_cpu_spec, name_vmcoreinfo, file);
+	READ_SYMBOL("free_huge_page", free_huge_page, name_vmcoreinfo, file);
 
-	READ_STRUCTURE_SIZE("page", page);
-	READ_STRUCTURE_SIZE("mem_section", mem_section);
-	READ_STRUCTURE_SIZE("pglist_data", pglist_data);
-	READ_STRUCTURE_SIZE("zone", zone);
-	READ_STRUCTURE_SIZE("free_area", free_area);
-	READ_STRUCTURE_SIZE("list_head", list_head);
-	READ_STRUCTURE_SIZE("node_memblk_s", node_memblk_s);
-	READ_STRUCTURE_SIZE("nodemask_t", nodemask_t);
-	READ_STRUCTURE_SIZE("pageflags", pageflags);
-	READ_STRUCTURE_SIZE("vmemmap_backing", vmemmap_backing);
-	READ_STRUCTURE_SIZE("mmu_psize_def", mmu_psize_def);
+	READ_STRUCTURE_SIZE("page", page, name_vmcoreinfo, file);
+	READ_STRUCTURE_SIZE("mem_section", mem_section, name_vmcoreinfo, file);
+	READ_STRUCTURE_SIZE("pglist_data", pglist_data, name_vmcoreinfo, file);
+	READ_STRUCTURE_SIZE("zone", zone, name_vmcoreinfo, file);
+	READ_STRUCTURE_SIZE("free_area", free_area, name_vmcoreinfo, file);
+	READ_STRUCTURE_SIZE("list_head", list_head, name_vmcoreinfo, file);
+	READ_STRUCTURE_SIZE("node_memblk_s", node_memblk_s, name_vmcoreinfo, file);
+	READ_STRUCTURE_SIZE("nodemask_t", nodemask_t, name_vmcoreinfo, file);
+	READ_STRUCTURE_SIZE("pageflags", pageflags, name_vmcoreinfo, file);
+	READ_STRUCTURE_SIZE("vmemmap_backing", vmemmap_backing, name_vmcoreinfo, file);
+	READ_STRUCTURE_SIZE("mmu_psize_def", mmu_psize_def, name_vmcoreinfo, file);
 
 
-	READ_MEMBER_OFFSET("page.flags", page.flags);
-	READ_MEMBER_OFFSET("page._refcount", page._refcount);
+	READ_MEMBER_OFFSET("page.flags", page.flags, name_vmcoreinfo, file);
+	READ_MEMBER_OFFSET("page._refcount", page._refcount, name_vmcoreinfo, file);
 	if (OFFSET(page._refcount) == NOT_FOUND_STRUCTURE) {
 		info->flag_use_count = TRUE;
-		READ_MEMBER_OFFSET("page._count", page._refcount);
+		READ_MEMBER_OFFSET("page._count", page._refcount, name_vmcoreinfo, file);
 	} else {
 		info->flag_use_count = FALSE;
 	}
-	READ_MEMBER_OFFSET("page.mapping", page.mapping);
-	READ_MEMBER_OFFSET("page.lru", page.lru);
-	READ_MEMBER_OFFSET("page._mapcount", page._mapcount);
-	READ_MEMBER_OFFSET("page.private", page.private);
-	READ_MEMBER_OFFSET("page.compound_dtor", page.compound_dtor);
-	READ_MEMBER_OFFSET("page.compound_order", page.compound_order);
-	READ_MEMBER_OFFSET("page.compound_head", page.compound_head);
+	READ_MEMBER_OFFSET("page.mapping", page.mapping, name_vmcoreinfo, file);
+	READ_MEMBER_OFFSET("page.lru", page.lru, name_vmcoreinfo, file);
+	READ_MEMBER_OFFSET("page._mapcount", page._mapcount, name_vmcoreinfo, file);
+	READ_MEMBER_OFFSET("page.private", page.private, name_vmcoreinfo, file);
+	READ_MEMBER_OFFSET("page.compound_dtor", page.compound_dtor, name_vmcoreinfo, file);
+	READ_MEMBER_OFFSET("page.compound_order", page.compound_order, name_vmcoreinfo, file);
+	READ_MEMBER_OFFSET("page.compound_head", page.compound_head, name_vmcoreinfo, file);
 	READ_MEMBER_OFFSET("mem_section.section_mem_map",
-	    mem_section.section_mem_map);
-	READ_MEMBER_OFFSET("pglist_data.node_zones", pglist_data.node_zones);
-	READ_MEMBER_OFFSET("pglist_data.nr_zones", pglist_data.nr_zones);
-	READ_MEMBER_OFFSET("pglist_data.node_mem_map",pglist_data.node_mem_map);
+	    mem_section.section_mem_map, name_vmcoreinfo, file);
+	READ_MEMBER_OFFSET("pglist_data.node_zones", pglist_data.node_zones, name_vmcoreinfo, file);
+	READ_MEMBER_OFFSET("pglist_data.nr_zones", pglist_data.nr_zones, name_vmcoreinfo, file);
+	READ_MEMBER_OFFSET("pglist_data.node_mem_map",pglist_data.node_mem_map, name_vmcoreinfo, file);
 	READ_MEMBER_OFFSET("pglist_data.node_start_pfn",
-	    pglist_data.node_start_pfn);
+	    pglist_data.node_start_pfn, name_vmcoreinfo, file);
 	READ_MEMBER_OFFSET("pglist_data.node_spanned_pages",
-	    pglist_data.node_spanned_pages);
-	READ_MEMBER_OFFSET("pglist_data.pgdat_next", pglist_data.pgdat_next);
-	READ_MEMBER_OFFSET("zone.free_pages", zone.free_pages);
-	READ_MEMBER_OFFSET("zone.free_area", zone.free_area);
-	READ_MEMBER_OFFSET("zone.vm_stat", zone.vm_stat);
-	READ_MEMBER_OFFSET("zone.spanned_pages", zone.spanned_pages);
-	READ_MEMBER_OFFSET("free_area.free_list", free_area.free_list);
-	READ_MEMBER_OFFSET("list_head.next", list_head.next);
-	READ_MEMBER_OFFSET("list_head.prev", list_head.prev);
-	READ_MEMBER_OFFSET("node_memblk_s.start_paddr", node_memblk_s.start_paddr);
-	READ_MEMBER_OFFSET("node_memblk_s.size", node_memblk_s.size);
-	READ_MEMBER_OFFSET("node_memblk_s.nid", node_memblk_s.nid);
-	READ_MEMBER_OFFSET("vm_struct.addr", vm_struct.addr);
-	READ_MEMBER_OFFSET("vmap_area.va_start", vmap_area.va_start);
-	READ_MEMBER_OFFSET("vmap_area.list", vmap_area.list);
-	READ_MEMBER_OFFSET("vmemmap_backing.phys", vmemmap_backing.phys);
+	    pglist_data.node_spanned_pages, name_vmcoreinfo, file);
+	READ_MEMBER_OFFSET("pglist_data.pgdat_next", pglist_data.pgdat_next, name_vmcoreinfo, file);
+	READ_MEMBER_OFFSET("zone.free_pages", zone.free_pages, name_vmcoreinfo, file);
+	READ_MEMBER_OFFSET("zone.free_area", zone.free_area, name_vmcoreinfo, file);
+	READ_MEMBER_OFFSET("zone.vm_stat", zone.vm_stat, name_vmcoreinfo, file);
+	READ_MEMBER_OFFSET("zone.spanned_pages", zone.spanned_pages, name_vmcoreinfo, file);
+	READ_MEMBER_OFFSET("free_area.free_list", free_area.free_list, name_vmcoreinfo, file);
+	READ_MEMBER_OFFSET("list_head.next", list_head.next, name_vmcoreinfo, file);
+	READ_MEMBER_OFFSET("list_head.prev", list_head.prev, name_vmcoreinfo, file);
+	READ_MEMBER_OFFSET("node_memblk_s.start_paddr", node_memblk_s.start_paddr, name_vmcoreinfo, file);
+	READ_MEMBER_OFFSET("node_memblk_s.size", node_memblk_s.size, name_vmcoreinfo, file);
+	READ_MEMBER_OFFSET("node_memblk_s.nid", node_memblk_s.nid, name_vmcoreinfo, file);
+	READ_MEMBER_OFFSET("vm_struct.addr", vm_struct.addr, name_vmcoreinfo, file);
+	READ_MEMBER_OFFSET("vmap_area.va_start", vmap_area.va_start, name_vmcoreinfo, file);
+	READ_MEMBER_OFFSET("vmap_area.list", vmap_area.list, name_vmcoreinfo, file);
+	READ_MEMBER_OFFSET("vmemmap_backing.phys", vmemmap_backing.phys, name_vmcoreinfo, file);
 	READ_MEMBER_OFFSET("vmemmap_backing.virt_addr",
-	    vmemmap_backing.virt_addr);
-	READ_MEMBER_OFFSET("vmemmap_backing.list", vmemmap_backing.list);
-	READ_MEMBER_OFFSET("mmu_psize_def.shift", mmu_psize_def.shift);
-	READ_MEMBER_OFFSET("cpu_spec.mmu_features", cpu_spec.mmu_features);
+	    vmemmap_backing.virt_addr, name_vmcoreinfo, file);
+	READ_MEMBER_OFFSET("vmemmap_backing.list", vmemmap_backing.list, name_vmcoreinfo, file);
+	READ_MEMBER_OFFSET("mmu_psize_def.shift", mmu_psize_def.shift, name_vmcoreinfo, file);
+	READ_MEMBER_OFFSET("cpu_spec.mmu_features", cpu_spec.mmu_features, name_vmcoreinfo, file);
 
-	READ_STRUCTURE_SIZE("printk_log", printk_log);
+	READ_STRUCTURE_SIZE("printk_log", printk_log, name_vmcoreinfo, file);
 	if (SIZE(printk_log) != NOT_FOUND_STRUCTURE) {
 		info->flag_use_printk_log = TRUE;
-		READ_MEMBER_OFFSET("printk_log.ts_nsec", printk_log.ts_nsec);
-		READ_MEMBER_OFFSET("printk_log.len", printk_log.len);
-		READ_MEMBER_OFFSET("printk_log.text_len", printk_log.text_len);
+		READ_MEMBER_OFFSET("printk_log.ts_nsec", printk_log.ts_nsec, name_vmcoreinfo, file);
+		READ_MEMBER_OFFSET("printk_log.len", printk_log.len, name_vmcoreinfo, file);
+		READ_MEMBER_OFFSET("printk_log.text_len", printk_log.text_len, name_vmcoreinfo, file);
 	} else {
 		info->flag_use_printk_log = FALSE;
-		READ_STRUCTURE_SIZE("log", printk_log);
-		READ_MEMBER_OFFSET("log.ts_nsec", printk_log.ts_nsec);
-		READ_MEMBER_OFFSET("log.len", printk_log.len);
-		READ_MEMBER_OFFSET("log.text_len", printk_log.text_len);
+		READ_STRUCTURE_SIZE("log", printk_log, name_vmcoreinfo, file);
+		READ_MEMBER_OFFSET("log.ts_nsec", printk_log.ts_nsec, name_vmcoreinfo, file);
+		READ_MEMBER_OFFSET("log.len", printk_log.len, name_vmcoreinfo, file);
+		READ_MEMBER_OFFSET("log.text_len", printk_log.text_len, name_vmcoreinfo, file);
 	}
 
-	READ_ARRAY_LENGTH("node_data", node_data);
-	READ_ARRAY_LENGTH("pgdat_list", pgdat_list);
-	READ_ARRAY_LENGTH("mem_section", mem_section);
-	READ_ARRAY_LENGTH("node_memblk", node_memblk);
-	READ_ARRAY_LENGTH("zone.free_area", zone.free_area);
-	READ_ARRAY_LENGTH("free_area.free_list", free_area.free_list);
-	READ_ARRAY_LENGTH("node_remap_start_pfn", node_remap_start_pfn);
+	READ_ARRAY_LENGTH("node_data", node_data, name_vmcoreinfo, file);
+	READ_ARRAY_LENGTH("pgdat_list", pgdat_list, name_vmcoreinfo, file);
+	READ_ARRAY_LENGTH("mem_section", mem_section, name_vmcoreinfo, file);
+	READ_ARRAY_LENGTH("node_memblk", node_memblk, name_vmcoreinfo, file);
+	READ_ARRAY_LENGTH("zone.free_area", zone.free_area, name_vmcoreinfo, file);
+	READ_ARRAY_LENGTH("free_area.free_list", free_area.free_list, name_vmcoreinfo, file);
+	READ_ARRAY_LENGTH("node_remap_start_pfn", node_remap_start_pfn, name_vmcoreinfo, file);
 
-	READ_NUMBER("NR_FREE_PAGES", NR_FREE_PAGES);
-	READ_NUMBER("N_ONLINE", N_ONLINE);
-	READ_NUMBER("pgtable_l5_enabled", pgtable_l5_enabled);
+	READ_NUMBER("NR_FREE_PAGES", NR_FREE_PAGES, name_vmcoreinfo, file);
+	READ_NUMBER("N_ONLINE", N_ONLINE, name_vmcoreinfo, file);
+	READ_NUMBER("pgtable_l5_enabled", pgtable_l5_enabled, name_vmcoreinfo, file);
 
-	READ_NUMBER("PG_lru", PG_lru);
-	READ_NUMBER("PG_private", PG_private);
-	READ_NUMBER("PG_head_mask", PG_head_mask);
-	READ_NUMBER("PG_swapcache", PG_swapcache);
-	READ_NUMBER("PG_swapbacked", PG_swapbacked);
-	READ_NUMBER("PG_slab", PG_slab);
-	READ_NUMBER("PG_buddy", PG_buddy);
-	READ_NUMBER("PG_hwpoison", PG_hwpoison);
-	READ_NUMBER("SECTION_SIZE_BITS", SECTION_SIZE_BITS);
-	READ_NUMBER("MAX_PHYSMEM_BITS", MAX_PHYSMEM_BITS);
+	READ_NUMBER("PG_lru", PG_lru, name_vmcoreinfo, file);
+	READ_NUMBER("PG_private", PG_private, name_vmcoreinfo, file);
+	READ_NUMBER("PG_head_mask", PG_head_mask, name_vmcoreinfo, file);
+	READ_NUMBER("PG_swapcache", PG_swapcache, name_vmcoreinfo, file);
+	READ_NUMBER("PG_swapbacked", PG_swapbacked, name_vmcoreinfo, file);
+	READ_NUMBER("PG_slab", PG_slab, name_vmcoreinfo, file);
+	READ_NUMBER("PG_buddy", PG_buddy, name_vmcoreinfo, file);
+	READ_NUMBER("PG_hwpoison", PG_hwpoison, name_vmcoreinfo, file);
+	READ_NUMBER("SECTION_SIZE_BITS", SECTION_SIZE_BITS, name_vmcoreinfo, file);
+	READ_NUMBER("MAX_PHYSMEM_BITS", MAX_PHYSMEM_BITS, name_vmcoreinfo, file);
 
-	READ_SRCFILE("pud_t", pud_t);
+	READ_SRCFILE("pud_t", pud_t, name_vmcoreinfo, file);
 
-	READ_NUMBER("PAGE_BUDDY_MAPCOUNT_VALUE", PAGE_BUDDY_MAPCOUNT_VALUE);
-	READ_NUMBER("phys_base", phys_base);
+	READ_NUMBER("PAGE_BUDDY_MAPCOUNT_VALUE", PAGE_BUDDY_MAPCOUNT_VALUE, name_vmcoreinfo, file);
+	READ_NUMBER("phys_base", phys_base, name_vmcoreinfo, file);
 #ifdef __aarch64__
-	READ_NUMBER("VA_BITS", VA_BITS);
-	READ_NUMBER_UNSIGNED("PHYS_OFFSET", PHYS_OFFSET);
-	READ_NUMBER_UNSIGNED("kimage_voffset", kimage_voffset);
+	READ_NUMBER("VA_BITS", VA_BITS, name_vmcoreinfo, file);
+	READ_NUMBER_UNSIGNED("PHYS_OFFSET", PHYS_OFFSET, name_vmcoreinfo, file);
+	ERRMSG("phys_base : %lx\n", NUMBER(PHYS_OFFSET));
+	READ_NUMBER_UNSIGNED("kimage_voffset", kimage_voffset, name_vmcoreinfo, file);
+	ERRMSG("kimage_voffset : %lx\n", NUMBER(kimage_voffset));
 #endif
 
-	READ_NUMBER("HUGETLB_PAGE_DTOR", HUGETLB_PAGE_DTOR);
+	READ_NUMBER("HUGETLB_PAGE_DTOR", HUGETLB_PAGE_DTOR, name_vmcoreinfo, file);
 
 	return TRUE;
 }
 
 /*
- * Extract vmcoreinfo from /proc/vmcore and output it to /tmp/vmcoreinfo.tmp.
+ * Extract vmcoreinfo from '/proc/vmcore' or '/proc/kcore' and output it to /tmp/vmcoreinfo.tmp.
  */
 int
-copy_vmcoreinfo(off_t offset, unsigned long size)
+copy_vmcoreinfo(off_t offset, unsigned long size,
+		char *name_vmcoreinfo, int fd_memory)
 {
 	int fd;
-	char buf[VMCOREINFO_BYTES];
+	char buf[409600];
 	const off_t failed = (off_t)-1;
 
-	if (!offset || !size)
+	if (!offset || !size || !fd_memory || name_vmcoreinfo == NULL)
 		return FALSE;
 
-	if ((fd = mkstemp(info->name_vmcoreinfo)) < 0) {
+	if ((fd = mkstemp(name_vmcoreinfo)) < 0) {
 		ERRMSG("Can't open the vmcoreinfo file(%s). %s\n",
-		    info->name_vmcoreinfo, strerror(errno));
+		    name_vmcoreinfo, strerror(errno));
 		return FALSE;
 	}
-	if (lseek(info->fd_memory, offset, SEEK_SET) == failed) {
+	if (lseek(fd_memory, offset, SEEK_SET) == failed) {
 		ERRMSG("Can't seek the dump memory(%s). %s\n",
 		    info->name_memory, strerror(errno));
 		return FALSE;
 	}
-	if (read(info->fd_memory, &buf, size) != size) {
+	ERRMSG("Bhupesh inside copy_vmcoreinfo before read\n");
+	if (read(fd_memory, &buf, size) != size) {
 		ERRMSG("Can't read the dump memory(%s). %s\n",
 		    info->name_memory, strerror(errno));
 		return FALSE;
 	}
+	ERRMSG("Bhupesh inside copy_vmcoreinfo before write\n");
 	if (write(fd, &buf, size) != size) {
 		ERRMSG("Can't write the vmcoreinfo file(%s). %s\n",
-		    info->name_vmcoreinfo, strerror(errno));
+		    name_vmcoreinfo, strerror(errno));
 		return FALSE;
 	}
+	ERRMSG("Bhupesh inside copy_vmcoreinfo before close\n");
 	if (close(fd) < 0) {
 		ERRMSG("Can't close the vmcoreinfo file(%s). %s\n",
-		    info->name_vmcoreinfo, strerror(errno));
+		    name_vmcoreinfo, strerror(errno));
 		return FALSE;
 	}
 	return TRUE;
 }
 
 int
-read_vmcoreinfo_from_vmcore(off_t offset, unsigned long size, int flag_xen_hv)
+read_vmcoreinfo_from_vmcore(off_t offset, unsigned long size, int flag_xen_hv,
+			    int fd)
 {
 	int ret = FALSE;
+
+	DEBUG_MSG ("Bhupesh Inside read_vmcoreinfo_from_vmcore 1\n");
 
 	/*
 	 * Copy vmcoreinfo to /tmp/vmcoreinfoXXXXXX.
@@ -2752,32 +2764,103 @@ read_vmcoreinfo_from_vmcore(off_t offset, unsigned long size, int flag_xen_hv)
 		MSG("Can't duplicate strings(%s).\n", FILENAME_VMCOREINFO);
 		return FALSE;
 	}
-	if (!copy_vmcoreinfo(offset, size))
+	if (!copy_vmcoreinfo(offset, size, info->name_vmcoreinfo, fd))
 		goto out;
 
+	DEBUG_MSG ("Bhupesh Inside read_vmcoreinfo_from_vmcore 2\n");
 	/*
 	 * Read vmcoreinfo from /tmp/vmcoreinfoXXXXXX.
 	 */
-	if (!open_vmcoreinfo("r"))
+	if (!open_vmcoreinfo("r", info->name_vmcoreinfo))
 		goto out;
 
 	unlink(info->name_vmcoreinfo);
 
 	if (flag_xen_hv) {
-		if (!read_vmcoreinfo_xen())
+		if (!read_vmcoreinfo_xen(info->name_vmcoreinfo, info->file_vmcoreinfo))
 			goto out;
 	} else {
-		if (!read_vmcoreinfo())
+		if (!read_vmcoreinfo(info->name_vmcoreinfo, info->file_vmcoreinfo))
 			goto out;
 	}
-	close_vmcoreinfo();
+	DEBUG_MSG ("Bhupesh Inside read_vmcoreinfo_from_vmcore 3\n");
+	close_vmcoreinfo(info->name_vmcoreinfo, info->file_vmcoreinfo);
+	DEBUG_MSG ("Bhupesh Inside read_vmcoreinfo_from_vmcore 4\n");
 
 	ret = TRUE;
 out:
 	free(info->name_vmcoreinfo);
+	DEBUG_MSG ("Bhupesh Inside read_vmcoreinfo_from_vmcore 5\n");
 	info->name_vmcoreinfo = NULL;
+	DEBUG_MSG ("Bhupesh Inside read_vmcoreinfo_from_vmcore 6\n");
 
 	return ret;
+	DEBUG_MSG ("Bhupesh Inside read_vmcoreinfo_from_vmcore 7\n");
+}
+
+int
+read_vmcoreinfo_from_file(off_t offset, unsigned long size, int flag_xen_hv,
+			  int file_type)
+{
+	int ret = FALSE;
+
+	switch (file_type) {
+	case KCORE:
+		DEBUG_MSG ("Bhupesh calling read_vmcoreinfo_from_vmcore, offset:%lx, size:%lx\n", offset, size);
+		ret = read_vmcoreinfo_from_vmcore(offset, size, flag_xen_hv, info->fd_kcoreinfo);
+		DEBUG_MSG ("Bhupesh after calling read_vmcoreinfo_from_vmcore\n");
+		break;
+
+	case VMCORE:
+		ret = read_vmcoreinfo_from_vmcore(offset, size, flag_xen_hv, info->fd_memory);
+		break;
+	
+	default:
+		break;
+	}
+
+	return ret;
+}
+
+int
+open_kcore(void)
+{
+	int fd = 0;
+	
+	if ((fd = open("/proc/kcore", O_RDONLY)) < 0) {
+		ERRMSG("Can't open the kcore file(%s). %s\n",
+		    "/proc/kcore", strerror(errno));
+		return FALSE;
+	}
+	
+	if (!(info->name_kcoreinfo = strdup("/proc/kcore"))) {
+		MSG("Can't duplicate strings(%s).\n", "/proc/kcore");
+		return FALSE;
+	}
+
+	info->fd_kcoreinfo = fd;
+	
+	return TRUE;
+}
+
+int
+kcore_read_vmcoreinfo(void)
+{
+	off_t offset = 0;
+	unsigned long size = 0;
+
+	if (!get_elf_info(info->fd_kcoreinfo, info->name_kcoreinfo))
+		return FALSE;
+
+	get_pt_note(&offset, &size);
+	
+	DEBUG_MSG("Bhupesh before after calling read_vmcoreinfo_from_file, offset=%d, size=%lu\n", offset, size);
+
+	read_vmcoreinfo_from_file(offset, size, FALSE, KCORE);
+
+	DEBUG_MSG("Bhupesh after calling read_vmcoreinfo_from_file\n");
+
+	return TRUE;
 }
 
 /*
@@ -3927,10 +4010,10 @@ find_kaslr_offsets()
 		MSG("Can't duplicate strings(%s).\n", FILENAME_VMCOREINFO);
 		return FALSE;
 	}
-	if (!copy_vmcoreinfo(offset, size))
+	if (!copy_vmcoreinfo(offset, size, info->name_vmcoreinfo, info->fd_memory))
 		goto out;
 
-	if (!open_vmcoreinfo("r"))
+	if (!open_vmcoreinfo("r", info->name_vmcoreinfo))
 		goto out;
 
 	unlink(info->name_vmcoreinfo);
@@ -3944,7 +4027,7 @@ find_kaslr_offsets()
 	 */
 	get_kaslr_offset(SYMBOL(_stext));
 
-	close_vmcoreinfo();
+	close_vmcoreinfo(info->name_vmcoreinfo, info->file_vmcoreinfo);
 
 	ret = TRUE;
 out:
@@ -4005,11 +4088,11 @@ initial(void)
 		info->file_vmcoreinfo = file_vmcoreinfo;
 
 		info->read_text_vmcoreinfo = 1;
-		if (!read_vmcoreinfo())
+		if (!read_vmcoreinfo(info->name_vmcoreinfo, info->file_vmcoreinfo))
 			return FALSE;
 		info->read_text_vmcoreinfo = 0;
 
-		close_vmcoreinfo();
+		close_vmcoreinfo(info->name_vmcoreinfo, info->file_vmcoreinfo);
 		debug_info = TRUE;
 	/*
 	 * Get the debug information for analysis from the kernel file
@@ -4058,7 +4141,8 @@ initial(void)
 	 */
 	if (has_vmcoreinfo()) {
 		get_vmcoreinfo(&offset, &size);
-		if (!read_vmcoreinfo_from_vmcore(offset, size, FALSE))
+		if (!read_vmcoreinfo_from_vmcore(offset, size, FALSE,
+						 info->fd_memory))
 			return FALSE;
 		debug_info = TRUE;
 	}
@@ -8880,7 +8964,7 @@ write_kdump_pages_and_bitmap_cyclic(struct cache_data *cd_header, struct cache_d
 }
 	
 void
-close_vmcoreinfo(void)
+close_vmcoreinfo(char *name_vmcoreinfo, FILE *file)
 {
 	if(fclose(info->file_vmcoreinfo) < 0)
 		ERRMSG("Can't close the vmcoreinfo file(%s). %s\n",
@@ -8952,7 +9036,7 @@ close_files_for_generating_vmcoreinfo(void)
 {
 	close_kernel_file();
 
-	close_vmcoreinfo();
+	close_vmcoreinfo(info->name_vmcoreinfo, info->file_vmcoreinfo);
 
 	return TRUE;
 }
@@ -9284,7 +9368,7 @@ show_data_xen(void)
 }
 
 int
-generate_vmcoreinfo_xen(void)
+generate_vmcoreinfo_xen(FILE* file)
 {
 	if ((info->page_size = sysconf(_SC_PAGE_SIZE)) <= 0) {
 		ERRMSG("Can't get the size of page.\n");
@@ -9302,39 +9386,39 @@ generate_vmcoreinfo_xen(void)
 	/*
 	 * write 1st kernel's PAGESIZE
 	 */
-	fprintf(info->file_vmcoreinfo, "%s%ld\n", STR_PAGESIZE,
+	fprintf(file, "%s%ld\n", STR_PAGESIZE,
 	    info->page_size);
 
 	/*
 	 * write the symbol of 1st kernel
 	 */
-	WRITE_SYMBOL("dom_xen", dom_xen);
-	WRITE_SYMBOL("dom_io", dom_io);
-	WRITE_SYMBOL("domain_list", domain_list);
-	WRITE_SYMBOL("xen_heap_start", xen_heap_start);
-	WRITE_SYMBOL("frame_table", frame_table);
-	WRITE_SYMBOL("alloc_bitmap", alloc_bitmap);
-	WRITE_SYMBOL("max_page", max_page);
-	WRITE_SYMBOL("pgd_l2", pgd_l2);
-	WRITE_SYMBOL("pgd_l3", pgd_l3);
-	WRITE_SYMBOL("pgd_l4", pgd_l4);
-	WRITE_SYMBOL("xenheap_phys_end", xenheap_phys_end);
-	WRITE_SYMBOL("xen_pstart", xen_pstart);
-	WRITE_SYMBOL("frametable_pg_dir", frametable_pg_dir);
+	WRITE_SYMBOL("dom_xen", dom_xen, file);
+	WRITE_SYMBOL("dom_io", dom_io, file);
+	WRITE_SYMBOL("domain_list", domain_list, file);
+	WRITE_SYMBOL("xen_heap_start", xen_heap_start, file);
+	WRITE_SYMBOL("frame_table", frame_table, file);
+	WRITE_SYMBOL("alloc_bitmap", alloc_bitmap, file);
+	WRITE_SYMBOL("max_page", max_page, file);
+	WRITE_SYMBOL("pgd_l2", pgd_l2, file);
+	WRITE_SYMBOL("pgd_l3", pgd_l3, file);
+	WRITE_SYMBOL("pgd_l4", pgd_l4, file);
+	WRITE_SYMBOL("xenheap_phys_end", xenheap_phys_end, file);
+	WRITE_SYMBOL("xen_pstart", xen_pstart, file);
+	WRITE_SYMBOL("frametable_pg_dir", frametable_pg_dir, file);
 
 	/*
 	 * write the structure size of 1st kernel
 	 */
-	WRITE_STRUCTURE_SIZE("page_info", page_info);
-	WRITE_STRUCTURE_SIZE("domain", domain);
+	WRITE_STRUCTURE_SIZE("page_info", page_info, file);
+	WRITE_STRUCTURE_SIZE("domain", domain, file);
 
 	/*
 	 * write the member offset of 1st kernel
 	 */
-	WRITE_MEMBER_OFFSET("page_info.count_info", page_info.count_info);
-	WRITE_MEMBER_OFFSET("page_info._domain", page_info._domain);
-	WRITE_MEMBER_OFFSET("domain.domain_id", domain.domain_id);
-	WRITE_MEMBER_OFFSET("domain.next_in_list", domain.next_in_list);
+	WRITE_MEMBER_OFFSET("page_info.count_info", page_info.count_info, file);
+	WRITE_MEMBER_OFFSET("page_info._domain", page_info._domain, file);
+	WRITE_MEMBER_OFFSET("domain.domain_id", domain.domain_id, file);
+	WRITE_MEMBER_OFFSET("domain.next_in_list", domain.next_in_list, file);
 
 	return TRUE;
 }
@@ -9382,32 +9466,32 @@ read_vmcoreinfo_basic_info_xen(void)
 }
 
 int
-read_vmcoreinfo_xen(void)
+read_vmcoreinfo_xen(char *name_vmcoreinfo, FILE *file)
 {
 	if (!read_vmcoreinfo_basic_info_xen())
 		return FALSE;
 
-	READ_SYMBOL("dom_xen", dom_xen);
-	READ_SYMBOL("dom_io", dom_io);
-	READ_SYMBOL("domain_list", domain_list);
-	READ_SYMBOL("xen_heap_start", xen_heap_start);
-	READ_SYMBOL("frame_table", frame_table);
-	READ_SYMBOL("alloc_bitmap", alloc_bitmap);
-	READ_SYMBOL("max_page", max_page);
-	READ_SYMBOL("pgd_l2", pgd_l2);
-	READ_SYMBOL("pgd_l3", pgd_l3);
-	READ_SYMBOL("pgd_l4", pgd_l4);
-	READ_SYMBOL("xenheap_phys_end", xenheap_phys_end);
-	READ_SYMBOL("xen_pstart", xen_pstart);
-	READ_SYMBOL("frametable_pg_dir", frametable_pg_dir);
+	READ_SYMBOL("dom_xen", dom_xen, name_vmcoreinfo, file);
+	READ_SYMBOL("dom_io", dom_io, name_vmcoreinfo, file);
+	READ_SYMBOL("domain_list", domain_list, name_vmcoreinfo, file);
+	READ_SYMBOL("xen_heap_start", xen_heap_start, name_vmcoreinfo, file);
+	READ_SYMBOL("frame_table", frame_table, name_vmcoreinfo, file);
+	READ_SYMBOL("alloc_bitmap", alloc_bitmap, name_vmcoreinfo, file);
+	READ_SYMBOL("max_page", max_page, name_vmcoreinfo, file);
+	READ_SYMBOL("pgd_l2", pgd_l2, name_vmcoreinfo, file);
+	READ_SYMBOL("pgd_l3", pgd_l3, name_vmcoreinfo, file);
+	READ_SYMBOL("pgd_l4", pgd_l4, name_vmcoreinfo, file);
+	READ_SYMBOL("xenheap_phys_end", xenheap_phys_end, name_vmcoreinfo, file);
+	READ_SYMBOL("xen_pstart", xen_pstart, name_vmcoreinfo, file);
+	READ_SYMBOL("frametable_pg_dir", frametable_pg_dir, name_vmcoreinfo, file);
 
-	READ_STRUCTURE_SIZE("page_info", page_info);
-	READ_STRUCTURE_SIZE("domain", domain);
+	READ_STRUCTURE_SIZE("page_info", page_info, name_vmcoreinfo, file);
+	READ_STRUCTURE_SIZE("domain", domain, name_vmcoreinfo, file);
 
-	READ_MEMBER_OFFSET("page_info.count_info", page_info.count_info);
-	READ_MEMBER_OFFSET("page_info._domain", page_info._domain);
-	READ_MEMBER_OFFSET("domain.domain_id", domain.domain_id);
-	READ_MEMBER_OFFSET("domain.next_in_list", domain.next_in_list);
+	READ_MEMBER_OFFSET("page_info.count_info", page_info.count_info, name_vmcoreinfo, file);
+	READ_MEMBER_OFFSET("page_info._domain", page_info._domain, name_vmcoreinfo, file);
+	READ_MEMBER_OFFSET("domain.domain_id", domain.domain_id, name_vmcoreinfo, file);
+	READ_MEMBER_OFFSET("domain.next_in_list", domain.next_in_list, name_vmcoreinfo, file);
 
 	return TRUE;
 }
@@ -9645,9 +9729,9 @@ initial_xen(void)
 	 * Get the debug information for analysis from the vmcoreinfo file
 	 */
 	if (info->flag_read_vmcoreinfo) {
-		if (!read_vmcoreinfo_xen())
+		if (!read_vmcoreinfo_xen(info->name_vmcoreinfo, info->file_vmcoreinfo))
 			return FALSE;
-		close_vmcoreinfo();
+		close_vmcoreinfo(info->name_vmcoreinfo, info->file_vmcoreinfo);
 	/*
 	 * Get the debug information for analysis from the xen-syms file
 	 */
@@ -9684,7 +9768,8 @@ initial_xen(void)
 		 * Get the debug information from /proc/vmcore
 		 */
 		get_vmcoreinfo_xen(&offset, &size);
-		if (!read_vmcoreinfo_from_vmcore(offset, size, TRUE))
+		if (!read_vmcoreinfo_from_vmcore(offset, size, TRUE,
+						 info->fd_memory))
 			return FALSE;
 	}
 
@@ -11289,6 +11374,7 @@ main(int argc, char *argv[])
 		goto out;
 	}
 	info->file_vmcoreinfo = NULL;
+	info->file_kcoreinfo = NULL;
 	info->fd_vmlinux = -1;
 	info->fd_xen_syms = -1;
 	info->fd_memory = -1;
@@ -11471,7 +11557,7 @@ main(int argc, char *argv[])
 			goto out;
 
 		if (info->name_xen_syms) {
-			if (!generate_vmcoreinfo_xen())
+			if (!generate_vmcoreinfo_xen(info->file_vmcoreinfo))
 				goto out;
 		} else {
 			if (!generate_vmcoreinfo())

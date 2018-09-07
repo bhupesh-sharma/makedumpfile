@@ -313,7 +313,7 @@ sadump_generate_vmcoreinfo_from_vmlinux(size_t *vmcoreinfo_size)
 	strncpy(info->release, info->system_utsname.release,
 		STRLEN_OSRELEASE);
 
-	write_vmcoreinfo_data();
+	write_vmcoreinfo_data(info->file_vmcoreinfo);
 
 	size = ftell(info->file_vmcoreinfo);
 

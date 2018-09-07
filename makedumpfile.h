@@ -277,17 +277,17 @@ do { \
 	if (SYMBOL(symbol) != NOT_FOUND_SYMBOL) \
 		SYMBOL(symbol) += info->kaslr_offset; \
 } while (0)
-#define WRITE_SYMBOL(str_symbol, symbol) \
+#define WRITE_SYMBOL(str_symbol, symbol, file) \
 do { \
 	if (SYMBOL(symbol) != NOT_FOUND_SYMBOL) { \
-		fprintf(info->file_vmcoreinfo, "%s%llx\n", \
+		fprintf(file, "%s%llx\n", \
 		    STR_SYMBOL(str_symbol), SYMBOL(symbol)); \
 	} \
 } while (0)
-#define READ_SYMBOL(str_symbol, symbol) \
+#define READ_SYMBOL(str_symbol, symbol, name, file) \
 do { \
 	if (SYMBOL(symbol) == NOT_FOUND_SYMBOL) { \
-		SYMBOL(symbol) = read_vmcoreinfo_symbol(STR_SYMBOL(str_symbol)); \
+		SYMBOL(symbol) = read_vmcoreinfo_symbol(STR_SYMBOL(str_symbol), name, file); \
 		if (SYMBOL(symbol) == INVALID_SYMBOL_DATA) \
 			return FALSE; \
 		if (info->read_text_vmcoreinfo && \
@@ -344,47 +344,47 @@ do { \
 		return FALSE; \
 } while (0)
 
-#define WRITE_STRUCTURE_SIZE(str_structure, structure) \
+#define WRITE_STRUCTURE_SIZE(str_structure, structure, file) \
 do { \
 	if (SIZE(structure) != NOT_FOUND_STRUCTURE) { \
-		fprintf(info->file_vmcoreinfo, "%s%ld\n", \
+		fprintf(file, "%s%ld\n", \
 		    STR_SIZE(str_structure), SIZE(structure)); \
 	} \
 } while (0)
-#define WRITE_MEMBER_OFFSET(str_member, member) \
+#define WRITE_MEMBER_OFFSET(str_member, member, file) \
 do { \
 	if (OFFSET(member) != NOT_FOUND_STRUCTURE) { \
-		fprintf(info->file_vmcoreinfo, "%s%ld\n", \
+		fprintf(file, "%s%ld\n", \
 		    STR_OFFSET(str_member), OFFSET(member)); \
 	} \
 } while (0)
-#define WRITE_ARRAY_LENGTH(str_array, array) \
+#define WRITE_ARRAY_LENGTH(str_array, array, file) \
 do { \
 	if (ARRAY_LENGTH(array) != NOT_FOUND_STRUCTURE) { \
-		fprintf(info->file_vmcoreinfo, "%s%ld\n", \
+		fprintf(file, "%s%ld\n", \
 		    STR_LENGTH(str_array), ARRAY_LENGTH(array)); \
 	} \
 } while (0)
-#define READ_STRUCTURE_SIZE(str_structure, structure) \
+#define READ_STRUCTURE_SIZE(str_structure, structure, name, file) \
 do { \
 	if (SIZE(structure) == NOT_FOUND_STRUCTURE) { \
-		SIZE(structure) = read_vmcoreinfo_long(STR_SIZE(str_structure)); \
+		SIZE(structure) = read_vmcoreinfo_long(STR_SIZE(str_structure), name, file); \
 		if (SIZE(structure) == INVALID_STRUCTURE_DATA) \
 			return FALSE; \
 	} \
 } while (0)
-#define READ_MEMBER_OFFSET(str_member, member) \
+#define READ_MEMBER_OFFSET(str_member, member, name, file) \
 do { \
 	if (OFFSET(member) == NOT_FOUND_STRUCTURE) { \
-		OFFSET(member) = read_vmcoreinfo_long(STR_OFFSET(str_member)); \
+		OFFSET(member) = read_vmcoreinfo_long(STR_OFFSET(str_member), name, file); \
 		if (OFFSET(member) == INVALID_STRUCTURE_DATA) \
 			return FALSE; \
 	} \
 } while (0)
-#define READ_ARRAY_LENGTH(str_array, array) \
+#define READ_ARRAY_LENGTH(str_array, array, name, file) \
 do { \
 	if (ARRAY_LENGTH(array) == NOT_FOUND_STRUCTURE) { \
-		ARRAY_LENGTH(array) = read_vmcoreinfo_long(STR_LENGTH(str_array)); \
+		ARRAY_LENGTH(array) = read_vmcoreinfo_long(STR_LENGTH(str_array), name, file); \
 		if (ARRAY_LENGTH(array) == INVALID_STRUCTURE_DATA) \
 			return FALSE; \
 	} \
@@ -401,32 +401,32 @@ do {\
 	if (NUMBER(number) == FAILED_DWARFINFO) \
 		return FALSE; \
 } while (0)
-#define WRITE_NUMBER(str_number, number) \
+#define WRITE_NUMBER(str_number, number, file) \
 do { \
 	if (NUMBER(number) != NOT_FOUND_NUMBER) { \
-		fprintf(info->file_vmcoreinfo, "%s%ld\n", \
+		fprintf(file, "%s%ld\n", \
 		    STR_NUMBER(str_number), NUMBER(number)); \
 	} \
 } while (0)
-#define READ_NUMBER(str_number, number) \
+#define READ_NUMBER(str_number, number, name, file) \
 do { \
 	if (NUMBER(number) == NOT_FOUND_NUMBER) { \
-		NUMBER(number) = read_vmcoreinfo_long(STR_NUMBER(str_number)); \
+		NUMBER(number) = read_vmcoreinfo_long(STR_NUMBER(str_number), name, file); \
 		if (NUMBER(number) == INVALID_STRUCTURE_DATA) \
 			return FALSE; \
 	} \
 } while (0)
-#define WRITE_NUMBER_UNSIGNED(str_number, number) \
+#define WRITE_NUMBER_UNSIGNED(str_number, number, file) \
 do { \
 	if (NUMBER(number) != NOT_FOUND_NUMBER) { \
-		fprintf(info->file_vmcoreinfo, "%s%lu\n", \
+		fprintf(file, "%s%lu\n", \
 		    STR_NUMBER(str_number), NUMBER(number)); \
 	} \
 } while (0)
-#define READ_NUMBER_UNSIGNED(str_number, number) \
+#define READ_NUMBER_UNSIGNED(str_number, number, name, file) \
 do { \
 	if (NUMBER(number) == NOT_FOUND_NUMBER) { \
-		NUMBER(number) = read_vmcoreinfo_ulong(STR_NUMBER(str_number)); \
+		NUMBER(number) = read_vmcoreinfo_ulong(STR_NUMBER(str_number), name, file); \
 		if (NUMBER(number) == INVALID_STRUCTURE_DATA) \
 			return FALSE; \
 	} \
@@ -442,18 +442,18 @@ do { \
 	get_source_filename(str_decl_name, SRCFILE(decl_name), DWARF_INFO_GET_TYPEDEF_SRCNAME); \
 } while (0)
 
-#define WRITE_SRCFILE(str_decl_name, decl_name) \
+#define WRITE_SRCFILE(str_decl_name, decl_name, file) \
 do { \
 	if (strlen(SRCFILE(decl_name))) { \
-		fprintf(info->file_vmcoreinfo, "%s%s\n", \
+		fprintf(file, "%s%s\n", \
 		    STR_SRCFILE(str_decl_name), SRCFILE(decl_name)); \
 	} \
 } while (0)
 
-#define READ_SRCFILE(str_decl_name, decl_name) \
+#define READ_SRCFILE(str_decl_name, decl_name, name, file) \
 do { \
 	if (strlen(SRCFILE(decl_name)) == 0) { \
-		if (!read_vmcoreinfo_string(STR_SRCFILE(str_decl_name), SRCFILE(decl_name))) \
+		if (!read_vmcoreinfo_string(STR_SRCFILE(str_decl_name), SRCFILE(decl_name), name, file)) \
 			return FALSE; \
 	} \
 } while (0)
@@ -1427,6 +1427,13 @@ struct DumpInfo {
 	int			read_text_vmcoreinfo;
 
 	/*
+	 * kcoreinfo file info:
+	 */
+	int			fd_kcoreinfo;
+	FILE			*file_kcoreinfo;
+	char			*name_kcoreinfo;	     /* kcoreinfo file */
+
+	/*
 	 * ELF NOTE section in dump memory image info:
 	 */
 	off_t			offset_note_dumpfile;
@@ -1993,16 +2000,16 @@ struct memory_range {
 struct memory_range crash_reserved_mem[CRASH_RESERVED_MEM_NR];
 int crash_reserved_mem_nr;
 
-unsigned long read_vmcoreinfo_symbol(char *str_symbol);
+unsigned long read_vmcoreinfo_symbol(char *str_symbol, char *name_vmcoreinfo, FILE *file);
 int readmem(int type_addr, unsigned long long addr, void *bufptr, size_t size);
 int get_str_osrelease_from_vmlinux(void);
-int read_vmcoreinfo_xen(void);
+int read_vmcoreinfo_xen(char *name_vmcoreinfo, FILE *file);
 int exclude_xen_user_domain(void);
 mdf_pfn_t get_num_dumpable(void);
 int __read_disk_dump_header(struct disk_dump_header *dh, char *filename);
 int read_disk_dump_header(struct disk_dump_header *dh, char *filename);
 int read_kdump_sub_header(struct kdump_sub_header *kh, char *filename);
-void close_vmcoreinfo(void);
+void close_vmcoreinfo(char *name_vmcoreinfo, FILE *file);
 int close_files_for_creating_dumpfile(void);
 int iomem_for_each_line(char *match, int (*callback)(void *data, int nr,
 						     char *str,
@@ -2232,7 +2239,7 @@ is_zero_page(unsigned char *buf, long page_size)
 	return TRUE;
 }
 
-void write_vmcoreinfo_data(void);
+void write_vmcoreinfo_data(FILE* file);
 int set_bit_on_1st_bitmap(mdf_pfn_t pfn, struct cycle *cycle);
 int clear_bit_on_1st_bitmap(mdf_pfn_t pfn, struct cycle *cycle);
 
@@ -2347,6 +2354,11 @@ struct elf_prstatus {
 #define OPT_NUM_THREADS         OPT_START+16
 #define OPT_PARTIAL_DMESG       OPT_START+17
 
+enum {
+	KCORE = 0,
+	VMCORE
+};
+
 /*
  * Function Prototype.
  */
@@ -2371,5 +2383,8 @@ ulong htol(char *s, int flags);
 int hexadecimal(char *s, int count);
 int decimal(char *s, int count);
 int file_exists(char *file);
+
+int kcore_read_vmcoreinfo(void);
+int open_kcore(void);
 
 #endif /* MAKEDUMPFILE_H */

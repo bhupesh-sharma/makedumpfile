@@ -316,6 +316,7 @@ get_pt_note_info(void)
 		} else if (!strncmp(VMCOREINFO_NOTE_NAME, buf,
 				    VMCOREINFO_NOTE_NAME_BYTES)) {
 			if (n_type == 0) {
+				ERRMSG("Bhupesh, found VMCOREINFO note\n");
 				set_vmcoreinfo(offset_desc, size_desc);
 			}
 		/*
