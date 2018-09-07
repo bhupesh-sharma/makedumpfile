@@ -1162,6 +1162,73 @@ check_release(void)
 }
 
 int
+read_vmcoreinfo_from_kcore(off_t offset, unsigned long size)
+{
+	int ret = FALSE;
+
+	/*
+	 * Copy kcoreinfo to /tmp/vmcoreinfoXXXXXX.
+	 */
+	if (!(info->name_kcoreinfo = strdup(FILENAME_VMCOREINFO))) {
+		MSG("Can't duplicate strings(%s).\n", FILENAME_VMCOREINFO);
+		return FALSE;
+	}
+	if (!copy_vmcoreinfo(offset, size))
+		goto out;
+
+	/*
+	 * Read vmcoreinfo from /tmp/vmcoreinfoXXXXXX.
+	 */
+	if (!open_vmcoreinfo("r"))
+		goto out;
+
+	unlink(info->name_kcoreinfo);
+
+	if (!read_vmcoreinfo())
+		goto out;
+
+	close_vmcoreinfo();
+
+	ret = TRUE;
+out:
+	free(info->name_kcoreinfo);
+	info->name_kcoreinfo = NULL;
+
+	return ret;
+}
+
+int
+kcore_read_vmcoreinfo(void)
+{
+	off_t offset;
+	unsigned long size;
+
+	if (!get_elf_info(info->file_kcore, info->name_kcoreinfo))
+		return FALSE;
+
+	get_pt_note(&offset, &size);
+
+	read_vmcoreinfo_from_kcore(offset, size);
+
+	return TRUE;
+}
+
+int
+open_kcore(void)
+{
+	FILE *file_kcore;
+	info->name_kcoreinfo = "/proc/kcore";
+
+	if ((file_kcore = fopen(info->name_kcoreinfo, O_RDONLY)) == NULL) {
+		ERRMSG("Can't open the kcore file(%s). %s\n",
+		    info->name_kcoreinfo, strerror(errno));
+		return FALSE;
+	}
+	info->file_kcore = file_kcore;
+	return TRUE;
+}
+
+int
 open_vmcoreinfo(char *mode)
 {
 	FILE *file_vmcoreinfo;

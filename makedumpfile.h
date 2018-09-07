@@ -1427,6 +1427,12 @@ struct DumpInfo {
 	int			read_text_vmcoreinfo;
 
 	/*
+	 * kcore file info:
+	 */
+	FILE			*file_kcore;
+	char			*name_kcoreinfo;	     /* kcore file */
+
+	/*
 	 * ELF NOTE section in dump memory image info:
 	 */
 	off_t			offset_note_dumpfile;
@@ -2371,5 +2377,8 @@ ulong htol(char *s, int flags);
 int hexadecimal(char *s, int count);
 int decimal(char *s, int count);
 int file_exists(char *file);
+
+int kcore_read_vmcoreinfo(void);
+int open_kcore(void);
 
 #endif /* MAKEDUMPFILE_H */

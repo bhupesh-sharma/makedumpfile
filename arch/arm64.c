@@ -307,6 +307,7 @@ int
 get_versiondep_info_arm64(void)
 {
 	int i;
+	unsigned long phys_offset;
 	unsigned long long phys_start;
 	unsigned long long virt_start;
 	ulong _stext;
@@ -332,6 +333,21 @@ get_versiondep_info_arm64(void)
 		ERRMSG("Cannot find a proper _stext for calculating VA_BITS\n");
 		return FALSE;
 	}
+
+	DEBUG_MSG("BHUPESH calling open_kcore\n");
+	open_kcore();
+	DEBUG_MSG("BHUPESH calling kcore_read_vmcoreinfo\n");
+	kcore_read_vmcoreinfo();
+	
+	/*
+	 * Get the PHYS_OFFSET.
+	 */
+	if (NUMBER(PHYS_OFFSET) != NOT_FOUND_NUMBER) {
+		phys_offset = NUMBER(PHYS_OFFSET);
+		DEBUG_MSG("BHUPESH phys_offset: %lx\n", phys_offset);
+	}
+	
+	DEBUG_MSG("BHUPESH phys_offset not found\n");
 
 	if (get_num_pt_loads()) {
 		for (i = 0;
