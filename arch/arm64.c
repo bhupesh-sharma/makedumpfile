@@ -53,6 +53,7 @@ static unsigned long kimage_voffset;
 #define PAGE_OFFSET_42 ((0xffffffffffffffffUL) << 42)
 #define PAGE_OFFSET_47 ((0xffffffffffffffffUL) << 47)
 #define PAGE_OFFSET_48 ((0xffffffffffffffffUL) << 48)
+#define __PAGE_OFFSET(x) ((0xffffffffffffffffUL) << (x - 1))
 
 #define pgd_val(x)		((x).pgd)
 #define pud_val(x)		(pgd_val((x).pgd))
@@ -311,45 +312,104 @@ get_versiondep_info_arm64(void)
 	unsigned long long virt_start;
 	ulong _stext;
 
-	_stext = get_stext_symbol();
-	if (!_stext) {
-		ERRMSG("Can't get the symbol of _stext.\n");
-		return FALSE;
-	}
+	/* Calculate 'VA_BITS'. */
 
-	/* Derive va_bits as per arch/arm64/Kconfig */
-	if ((_stext & PAGE_OFFSET_36) == PAGE_OFFSET_36) {
-		va_bits = 36;
-	} else if ((_stext & PAGE_OFFSET_39) == PAGE_OFFSET_39) {
-		va_bits = 39;
-	} else if ((_stext & PAGE_OFFSET_42) == PAGE_OFFSET_42) {
-		va_bits = 42;
-	} else if ((_stext & PAGE_OFFSET_47) == PAGE_OFFSET_47) {
-		va_bits = 47;
-	} else if ((_stext & PAGE_OFFSET_48) == PAGE_OFFSET_48) {
-		va_bits = 48;
+	/* Since kernel version 4.19, '/proc/kcore' contains a new
+	 * PT_NOTE which carries the VMCOREINFO information.
+	 *
+	 * If the same is available, use it as it already contains the
+	 * value of 'VA_BITS' on the machine.
+	 *
+	 * Otherwise, we can read the '_stext' symbol and determine the
+	 * 'VA_BITS' value from the same as well.
+	 */
+	if (info->flag_kcore_contains_vmcoreinfo &&
+	    (NUMBER(VA_BITS) != NOT_FOUND_NUMBER)) {
+		va_bits = NUMBER(VA_BITS);
 	} else {
-		ERRMSG("Cannot find a proper _stext for calculating VA_BITS\n");
-		return FALSE;
+		_stext = get_stext_symbol();
+		if (!_stext) {
+			ERRMSG("Can't get the symbol of _stext.\n");
+			return FALSE;
+		}
+
+		/* Derive va_bits as per arch/arm64/Kconfig */
+		if ((_stext & PAGE_OFFSET_36) == PAGE_OFFSET_36) {
+			va_bits = 36;
+		} else if ((_stext & PAGE_OFFSET_39) == PAGE_OFFSET_39) {
+			va_bits = 39;
+		} else if ((_stext & PAGE_OFFSET_42) == PAGE_OFFSET_42) {
+			va_bits = 42;
+		} else if ((_stext & PAGE_OFFSET_47) == PAGE_OFFSET_47) {
+			va_bits = 47;
+		} else if ((_stext & PAGE_OFFSET_48) == PAGE_OFFSET_48) {
+			va_bits = 48;
+		} else {
+			ERRMSG("Cannot find a proper _stext for calculating VA_BITS\n");
+			return FALSE;
+		}
 	}
 
+	/* Calculate 'info->page_offset'. */
+
+	/* Since kernel version 4.19, '/proc/kcore' contains a new
+	 * PT_NOTE which carries the VMCOREINFO information.
+	 *
+	 * If the same is available, use it as it already contains the
+	 * value of 'kimage_voffset' on the machine.
+	 */
+	if (info->flag_kcore_contains_vmcoreinfo &&
+	    (NUMBER(kimage_voffset) != NOT_FOUND_NUMBER)) {
+		kimage_voffset = NUMBER(kimage_voffset);
+	}
+
+	/* First, lets try and calculate the 'info->page_offset' value
+	 * from PT_LOAD segments, if they are available.
+	 */
 	if (get_num_pt_loads()) {
 		for (i = 0;
 		    get_pt_load(i, &phys_start, NULL, &virt_start, NULL);
 		    i++) {
-			if (virt_start != NOT_KV_ADDR
-			    && virt_start < __START_KERNEL_map
-			    && phys_start != NOT_PADDR
-			    && phys_start != NOT_PADDR_ARM64) {
-				info->page_offset = virt_start - phys_start;
-				DEBUG_MSG("info->page_offset: %lx, VA_BITS: %d\n",
-						info->page_offset, va_bits);
-				return TRUE;
+			/* On systems where we have a valid 'kimage_voffset'
+			 * available by now, we should give preference to the same
+			 * while calculating 'info->page_offset'.
+			 *
+			 * Otherwise, we can ensure that we consider
+			 * only those PT_LOAD segments whose 'virt_start'
+			 * is greater than the PAGE_OFFSET value (as defined
+			 * in 'arch/arm64/include/asm/memory.h').
+			 */
+			if (!kimage_voffset) {
+				if (virt_start != NOT_KV_ADDR &&
+				   virt_start > __PAGE_OFFSET(va_bits) &&
+				   phys_start != NOT_PADDR) {
+					info->page_offset = virt_start - phys_start;
+					DEBUG_MSG("info->page_offset: %lx, VA_BITS: %d\n",
+							info->page_offset, va_bits);
+					return TRUE;
+				}
+			} else {
+				if (virt_start != NOT_KV_ADDR &&
+				   phys_start != NOT_PADDR &&
+				   (virt_start - phys_start) != kimage_voffset) {
+					info->page_offset = virt_start - phys_start;
+					DEBUG_MSG("info->page_offset: %lx, VA_BITS: %d\n",
+							info->page_offset, va_bits);
+					return TRUE;
+				}
 			}
 		}
 	}
 
-	info->page_offset = (0xffffffffffffffffUL) << (va_bits - 1);
+	/* Fallback to hard-coded value (equal to PAGE_OFFSET macro
+	 * defined in 'arch/arm64/include/asm/memory.h'), as the last
+	 * resort.
+	 *
+	 * Note that this will not be a valid value on KASLR enabled
+	 * kernels as the start address of linear range is also
+	 * randomized for KASLR boot cases.
+	 */
+	info->page_offset = __PAGE_OFFSET(va_bits);
 	DEBUG_MSG("page_offset=%lx, va_bits=%d\n", info->page_offset,
 			va_bits);
 
