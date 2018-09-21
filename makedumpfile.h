@@ -544,7 +544,6 @@ unsigned long get_kvbase_arm64(void);
 #define KVBASE			get_kvbase_arm64()
 
 #define __START_KERNEL_map	(0xffffffff80000000UL)
-#define NOT_PADDR_ARM64		(0x0000000010a80000UL)
 
 #endif /* aarch64 */
 
@@ -1307,6 +1306,7 @@ struct DumpInfo {
 	int		flag_vmemmap;        /* kernel supports vmemmap address space */
 	int		flag_excludevm;      /* -e - excluding unused vmemmap pages */
 	int		flag_use_count;      /* _refcount is named _count in struct page */
+	int		flag_kcore_contains_vmcoreinfo;    /* '/proc/kcore' contains a VMCOREINFO PT_NOTE */
 	unsigned long	vaddr_for_vtop;      /* virtual address for debugging */
 	long		page_size;           /* size of page */
 	long		page_shift;

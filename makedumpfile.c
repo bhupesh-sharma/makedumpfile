@@ -1302,6 +1302,20 @@ error:
 	return FALSE;
 }
 
+static int
+check_kcore_contains_vmcoreinfo(int fd, char *name)
+{
+	if (!get_elf_info(fd, name))
+		return FALSE;
+
+	if (!has_vmcoreinfo())
+		return FALSE;
+
+	DEBUG_MSG("VMCOREINFO PT_NOTE found in %s\n", name);
+
+	return TRUE;
+}
+
 int
 open_dump_memory(void)
 {
@@ -1313,6 +1327,23 @@ open_dump_memory(void)
 		return FALSE;
 	}
 	info->fd_memory = fd;
+
+	/* Since kernel version 4.19, '/proc/kcore' contains a new
+	 * PT_NOTE which carries the VMCOREINFO information.
+	 *
+	 * If the same is available, use it for makedumpfile
+	 * show_mem_usage() cases.
+	 */
+	if (info->flag_mem_usage &&
+	    !(strcmp(info->name_memory, "/proc/kcore")) &&
+	    (info->kernel_version >= KERNEL_VERSION(4, 19, 0))){
+		status = check_kcore_contains_vmcoreinfo(fd,
+						info->name_memory);
+		if (status == TRUE) {
+			info->flag_kcore_contains_vmcoreinfo = TRUE;
+			return TRUE;
+		}
+	}
 
 	status = check_kdump_compressed(info->name_memory);
 	if (status == TRUE) {
@@ -11195,6 +11226,8 @@ static int get_sys_kernel_vmcoreinfo(uint64_t *addr, uint64_t *len)
 
 int show_mem_usage(void)
 {
+	off_t offset;
+	unsigned long size;
 	uint64_t vmcoreinfo_addr, vmcoreinfo_len;
 	struct cycle cycle = {0};
 
@@ -11208,17 +11241,39 @@ int show_mem_usage(void)
 	if (!open_files_for_creating_dumpfile())
 		return FALSE;
 
-	if (!get_elf_loads(info->fd_memory, info->name_memory))
-		return FALSE;
+	/* Since kernel version 4.19, '/proc/kcore' contains a new
+	 * PT_NOTE which carries the VMCOREINFO information.
+	 *
+	 * If the same is available, use it for makedumpfile
+	 * show_mem_usage(). This is especially useful for architectures
+	 * like arm64 as we can get symbols like 'VA_BITS' and
+	 * 'kimage_voffset' before we call get_page_offset().
+	 */
+
+	if (!info->flag_kcore_contains_vmcoreinfo) {
+		if (!get_elf_loads(info->fd_memory, info->name_memory))
+			return FALSE;
+	} else {
+		if (has_vmcoreinfo()) {
+			get_vmcoreinfo(&offset, &size);
+			if (!read_vmcoreinfo_from_vmcore(offset, size, FALSE))
+				return FALSE;
+		}
+	}
 
 	if (!get_page_offset())
 		return FALSE;
 
-	if (!get_sys_kernel_vmcoreinfo(&vmcoreinfo_addr, &vmcoreinfo_len))
-		return FALSE;
+	/* If flag_kcore_contains_vmcoreinfo is TRUE when we are here,
+	 * we don't need to read the vmcoreinfo again.
+	 */
+	if (!info->flag_kcore_contains_vmcoreinfo)
+		if (!get_sys_kernel_vmcoreinfo(&vmcoreinfo_addr, &vmcoreinfo_len))
+			return FALSE;
 
-	if (!set_kcore_vmcoreinfo(vmcoreinfo_addr, vmcoreinfo_len))
-		return FALSE;
+	if (!info->flag_kcore_contains_vmcoreinfo)
+		if (!set_kcore_vmcoreinfo(vmcoreinfo_addr, vmcoreinfo_len))
+			return FALSE;
 
 	if (!initial())
 		return FALSE;
