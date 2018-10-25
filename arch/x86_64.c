@@ -98,6 +98,22 @@ get_page_offset_x86_64(void)
 		return TRUE;
 	}
 
+	/* Calculate 'info->page_offset'. */
+
+	/* Since kernel version 4.19, '/proc/kcore' contains a new
+	 * PT_NOTE which carries the VMCOREINFO information.
+	 *
+	 * If the same is available, use it as it already contains the
+	 * value of 'page_offset_base' on the machine.
+	 */
+	if (info->flag_kcore_contains_vmcoreinfo &&
+	    (NUMBER(page_offset_base) != NOT_FOUND_NUMBER)) {
+		page_offset_base = NUMBER(page_offset_base);
+		info->page_offset = page_offset_base;
+		DEBUG_MSG("info->page_offset : %lx\n", info->page_offset);
+		return TRUE;
+	}
+
 	if (get_num_pt_loads()) {
 		for (i = 0;
 			get_pt_load(i, &phys_start, NULL, &virt_start, NULL);
@@ -106,6 +122,7 @@ get_page_offset_x86_64(void)
 					&& virt_start < __START_KERNEL_map
 					&& phys_start != NOT_PADDR) {
 				info->page_offset = virt_start - phys_start;
+				DEBUG_MSG("info->page_offset : %lx\n", info->page_offset);
 				return TRUE;
 			}
 		}

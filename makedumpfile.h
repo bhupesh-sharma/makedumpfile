@@ -1920,6 +1920,7 @@ struct number_table {
 	long	MAX_PHYSMEM_BITS;
 	long    HUGETLB_PAGE_DTOR;
 	long	phys_base;
+	unsigned long	page_offset_base;
 #ifdef __aarch64__
 	long 	VA_BITS;
 	unsigned long	PHYS_OFFSET;
