@@ -330,7 +330,14 @@ get_xen_info_arm64(void)
 int
 get_versiondep_info_arm64(void)
 {
+	bool va_bits_present_in_kcore = false;
 	ulong _stext;
+
+	if (NUMBER(VA_BITS) != NOT_FOUND_NUMBER) {
+		va_bits = NUMBER(VA_BITS);
+		va_bits_present_in_kcore = true;
+		goto found;
+	}
 
 	_stext = get_stext_symbol();
 	if (!_stext) {
@@ -354,9 +361,11 @@ get_versiondep_info_arm64(void)
 		return FALSE;
 	}
 
+found:
 	info->page_offset = (0xffffffffffffffffUL) << (va_bits - 1);
 
-	DEBUG_MSG("va_bits      : %d\n", va_bits);
+	DEBUG_MSG("va_bits      : %d (%s)\n", va_bits,
+			va_bits_present_in_kcore ? "kcore" : "kallsyms");
 	DEBUG_MSG("page_offset  : %lx\n", info->page_offset);
 
 	return TRUE;
