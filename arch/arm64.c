@@ -386,14 +386,17 @@ vaddr_to_paddr_arm64(unsigned long vaddr)
 	}
 
 	swapper_phys = __pa(SYMBOL(swapper_pg_dir));
+	ERRMSG("swapper_phys : %llx\n", swapper_phys);
 
 	pgda = pgd_offset(swapper_phys, vaddr);
+	ERRMSG("pgda : %lx\n", pgda);
 	if (!readmem(PADDR, (unsigned long long)pgda, &pgdv, sizeof(pgdv))) {
 		ERRMSG("Can't read pgd\n");
 		return NOT_PADDR;
 	}
 
 	puda = pud_offset(pgda, &pgdv, vaddr);
+	ERRMSG("puda : %lx\n", puda);
 	if (!readmem(PADDR, (unsigned long long)puda, &pudv, sizeof(pudv))) {
 		ERRMSG("Can't read pud\n");
 		return NOT_PADDR;
@@ -403,10 +406,12 @@ vaddr_to_paddr_arm64(unsigned long vaddr)
 		/* 1GB section for Page Table level = 4 and Page Size = 4KB */
 		paddr = (pud_val(pudv) & (PUD_MASK & PMD_SECTION_MASK))
 					+ (vaddr & (PUD_SIZE - 1));
+		ERRMSG("paddr 1 : %llx\n", paddr);
 		return paddr;
 	}
 
 	pmda = pmd_offset(puda, &pudv, vaddr);
+	ERRMSG("pmda : %lx\n", pmda);
 	if (!readmem(PADDR, (unsigned long long)pmda, &pmdv, sizeof(pmdv))) {
 		ERRMSG("Can't read pmd\n");
 		return NOT_PADDR;
@@ -415,6 +420,7 @@ vaddr_to_paddr_arm64(unsigned long vaddr)
 	switch (pmd_val(pmdv) & PMD_TYPE_MASK) {
 	case PMD_TYPE_TABLE:
 		ptea = pte_offset(&pmdv, vaddr);
+		ERRMSG("ptea : %lx\n", ptea);
 		/* 64k page */
 		if (!readmem(PADDR, (unsigned long long)ptea, &ptev, sizeof(ptev))) {
 			ERRMSG("Can't read pte\n");
@@ -428,12 +434,22 @@ vaddr_to_paddr_arm64(unsigned long vaddr)
 
 			paddr = (PAGEBASE(pte_val(ptev)) & PHYS_MASK)
 					+ (vaddr & (PAGESIZE() - 1));
+			ERRMSG("pte_val(ptev) : %llx\n", pte_val(ptev));
+			ERRMSG("PAGEBASE(pte_val(ptev)) : %llx\n", PAGEBASE(pte_val(ptev)));
+			ERRMSG("PHYS_MASK: %llx\n", PHYS_MASK);
+			ERRMSG("PAGEBASE(pte_val(ptev)) & PHYS_MASK : %llx\n", PAGEBASE(pte_val(ptev)) & PHYS_MASK);
+			ERRMSG("vaddr : %llx\n", vaddr);
+			ERRMSG("(PAGESIZE() - 1) : %llx\n", (PAGESIZE() - 1));
+			ERRMSG("(vaddr & (PAGESIZE() - 1)) : %llx\n", (vaddr & (PAGESIZE() - 1)));
+			ERRMSG("paddr 2 : %llx\n", paddr);
+
 		}
 		break;
 	case PMD_TYPE_SECT:
 		/* 512MB section for Page Table level = 3 and Page Size = 64KB*/
 		paddr = (pmd_val(pmdv) & (PMD_MASK & PMD_SECTION_MASK))
 					+ (vaddr & (PMD_SIZE - 1));
+		ERRMSG("paddr 3 : %llx\n", paddr);
 		break;
 	}
 
