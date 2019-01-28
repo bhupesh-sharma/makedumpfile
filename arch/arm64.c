@@ -19,6 +19,8 @@
 
 #ifdef __aarch64__
 
+#include <asm/hwcap.h>
+#include <sys/auxv.h>
 #include "../elf_info.h"
 #include "../makedumpfile.h"
 #include "../print_info.h"
@@ -44,7 +46,7 @@ typedef struct {
 #define __pud(x)	((pud_t) { (x) } )
 #define __pgd(x)	((pgd_t) { (x) } )
 
-static int lpa_52_bit_support_available = 1;
+static int lpa_52_bit_support_available;
 static int pgtable_level;
 static int va_bits;
 static unsigned long kimage_voffset;
@@ -477,9 +479,30 @@ get_stext_symbol(void)
 	return(found ? kallsym : FALSE);
 }
 
+#define get_cpu_ftr(id) ({                                      \
+                unsigned long __val;                            \
+                asm("mrs %0, "#id : "=r" (__val));              \
+                __val;                                          \
+        })
+
 int
 get_machdep_info_arm64(void)
 {
+	unsigned long val;
+
+	if (!(getauxval(AT_HWCAP) & HWCAP_CPUID)) {
+		ERRMSG("CPUID registers unavailable\n");
+		return FALSE;
+	}
+
+	/* Determine if the PA address range is 52-bits: ARMv8.2-LPA */
+	val = get_cpu_ftr(ID_AA64MMFR0_EL1);
+	if ((val & 0x7) == 0x6) {
+		lpa_52_bit_support_available = 1;
+		DEBUG_MSG("LPA8.2 - 52bit PA support available\n");
+	} else
+		DEBUG_MSG("LPA8.2 - 52bit PA support not available\n");
+
 	/* Check if va_bits is still not initialized. If still 0, call
 	 * get_versiondep_info() to initialize the same.
 	 */
@@ -647,5 +670,6 @@ vaddr_to_paddr_arm64(unsigned long vaddr)
 
 	return paddr;
 }
+
 
 #endif /* __aarch64__ */
