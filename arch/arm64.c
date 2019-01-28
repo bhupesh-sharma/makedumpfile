@@ -643,6 +643,14 @@ vaddr_to_paddr_arm64(unsigned long vaddr)
 		} else {
 			paddr = (PAGEBASE(pte_val(ptev)) & PHYS_MASK)
 					+ (vaddr & (PAGESIZE() - 1));
+			ERRMSG("pte_val(ptev) : %llx\n", pte_val(ptev));
+			ERRMSG("PAGEBASE(pte_val(ptev)) : %llx\n", PAGEBASE(pte_val(ptev)));
+			ERRMSG("PHYS_MASK: %llx\n", PHYS_MASK);
+			ERRMSG("PAGEBASE(pte_val(ptev)) & PHYS_MASK : %llx\n", PAGEBASE(pte_val(ptev)) & PHYS_MASK);
+			ERRMSG("vaddr : %llx\n", vaddr);
+			ERRMSG("(PAGESIZE() - 1) : %llx\n", (PAGESIZE() - 1));
+			ERRMSG("(vaddr & (PAGESIZE() - 1)) : %llx\n", (vaddr & (PAGESIZE() - 1)));
+			ERRMSG("paddr 2 : %llx\n", paddr);
 		}
 		break;
 	case PMD_TYPE_SECT:
