@@ -591,14 +591,18 @@ vaddr_to_paddr_arm64(unsigned long vaddr)
 	}
 
 	swapper_phys = __pa(SYMBOL(swapper_pg_dir));
+	ERRMSG("swapper_phys : %llx\n", swapper_phys);
 
 	pgda = pgd_offset(swapper_phys, vaddr);
+	ERRMSG("pgda : %llx\n", pgda);
 	if (!readmem(PADDR, (unsigned long long)pgda, &pgdv, sizeof(pgdv))) {
 		ERRMSG("Can't read pgd\n");
 		return NOT_PADDR;
 	}
+	ERRMSG("pgdv : %llx\n", pgdv);
 
 	puda = pud_offset(pgda, &pgdv, vaddr);
+	ERRMSG("puda : %llx\n", puda);
 	if (!readmem(PADDR, (unsigned long long)puda, &pudv, sizeof(pudv))) {
 		ERRMSG("Can't read pud\n");
 		return NOT_PADDR;
@@ -612,6 +616,7 @@ vaddr_to_paddr_arm64(unsigned long vaddr)
 	}
 
 	pmda = pmd_offset(puda, &pudv, vaddr);
+	ERRMSG("pmda : %llx\n", pmda);
 	if (!readmem(PADDR, (unsigned long long)pmda, &pmdv, sizeof(pmdv))) {
 		ERRMSG("Can't read pmd\n");
 		return NOT_PADDR;
@@ -620,6 +625,7 @@ vaddr_to_paddr_arm64(unsigned long vaddr)
 	switch (pmd_val(pmdv) & PMD_TYPE_MASK) {
 	case PMD_TYPE_TABLE:
 		ptea = pte_offset(&pmdv, vaddr);
+		ERRMSG("ptea : %llx\n", ptea);
 		/* 64k page */
 		if (!readmem(PADDR, (unsigned long long)ptea, &ptev, sizeof(ptev))) {
 			ERRMSG("Can't read pte\n");
@@ -632,6 +638,12 @@ vaddr_to_paddr_arm64(unsigned long vaddr)
 		} else {
 			paddr = (PAGEBASE(pte_val(ptev)) & PTE_ADDR_MASK)
 					+ (vaddr & (PAGESIZE() - 1));
+			ERRMSG("pte_val(ptev) : %llx\n", pte_val(ptev));
+			ERRMSG("PAGEBASE(pte_val(ptev)) : %llx\n", PAGEBASE(pte_val(ptev)));
+			ERRMSG("vaddr : %llx\n", vaddr);
+			ERRMSG("(PAGESIZE() - 1) : %llx\n", (PAGESIZE() - 1));
+			ERRMSG("(vaddr & (PAGESIZE() - 1)) : %llx\n", (vaddr & (PAGESIZE() - 1)));
+			ERRMSG("paddr 2 : %llx\n", paddr);
 		}
 		break;
 	case PMD_TYPE_SECT:
