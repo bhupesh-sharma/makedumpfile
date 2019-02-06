@@ -974,7 +974,7 @@ unsigned long long vaddr_to_paddr_arm64(unsigned long vaddr);
 int get_versiondep_info_arm64(void);
 int get_xen_basic_info_arm64(void);
 int get_xen_info_arm64(void);
-#define paddr_to_vaddr_arm64(X) (((X) - info->phys_base) | PAGE_OFFSET)
+#define paddr_to_vaddr_arm64(X) (((X) - (info->phys_base - PAGE_OFFSET)))
 
 #define find_vmemmap()		stub_false()
 #define vaddr_to_paddr(X)	vaddr_to_paddr_arm64(X)
@@ -1938,6 +1938,7 @@ struct number_table {
 	long	KERNEL_IMAGE_SIZE;
 #ifdef __aarch64__
 	long 	VA_BITS;
+	unsigned long	tcr_el1_t1sz;
 	unsigned long	PHYS_OFFSET;
 	unsigned long	kimage_voffset;
 #endif
