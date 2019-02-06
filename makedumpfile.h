@@ -1935,6 +1935,7 @@ struct number_table {
 	long    HUGETLB_PAGE_DTOR;
 	long	phys_base;
 #ifdef __aarch64__
+	long 	PTRS_PER_PGD;
 	long 	VA_BITS;
 	unsigned long	PHYS_OFFSET;
 	unsigned long	kimage_voffset;
