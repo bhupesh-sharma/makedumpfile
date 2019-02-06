@@ -974,7 +974,9 @@ unsigned long long vaddr_to_paddr_arm64(unsigned long vaddr);
 int get_versiondep_info_arm64(void);
 int get_xen_basic_info_arm64(void);
 int get_xen_info_arm64(void);
-#define paddr_to_vaddr_arm64(X) (((X) - info->phys_base) | PAGE_OFFSET)
+#define paddr_to_vaddr_arm64(X) ((info->kernel_version < KERNEL_VERSION(5, 4, 0)) ?	\
+				 ((X) - (info->phys_base - PAGE_OFFSET)) :		\
+				 (((X) - info->phys_base) | PAGE_OFFSET))
 
 #define find_vmemmap()		stub_false()
 #define vaddr_to_paddr(X)	vaddr_to_paddr_arm64(X)
@@ -1938,6 +1940,7 @@ struct number_table {
 	long	KERNEL_IMAGE_SIZE;
 #ifdef __aarch64__
 	long 	VA_BITS;
+	unsigned long	TCR_EL1_T1SZ;
 	unsigned long	PHYS_OFFSET;
 	unsigned long	kimage_voffset;
 #endif
@@ -2389,5 +2392,6 @@ ulong htol(char *s, int flags);
 int hexadecimal(char *s, int count);
 int decimal(char *s, int count);
 int file_exists(char *file);
+int populate_kernel_version(void);
 
 #endif /* MAKEDUMPFILE_H */
