@@ -19,9 +19,22 @@
 
 #ifdef __aarch64__
 
+#include <asm/hwcap.h>
+#include <sys/auxv.h>
 #include "../elf_info.h"
 #include "../makedumpfile.h"
 #include "../print_info.h"
+
+/* ID_AA64MMFR2_EL1 related helpers: */
+#define ID_AA64MMFR2_LVA_SHIFT	16
+#define ID_AA64MMFR2_LVA_MASK	(0xf << ID_AA64MMFR2_LVA_SHIFT)
+
+/* CPU feature ID registers */
+#define get_cpu_ftr(id) ({							\
+		unsigned long __val;						\
+		asm volatile("mrs %0, " __stringify(id) : "=r" (__val));	\
+		__val;								\
+})
 
 typedef struct {
 	unsigned long pgd;
@@ -47,6 +60,7 @@ typedef struct {
 static int lpa_52_bit_support_available;
 static int pgtable_level;
 static int va_bits;
+static int vabits_actual;
 static unsigned long kimage_voffset;
 
 #define SZ_4K			4096
@@ -219,13 +233,25 @@ pmd_page_paddr(pmd_t pmd)
 #define pte_index(vaddr) 		(((vaddr) >> PAGESHIFT()) & (PTRS_PER_PTE - 1))
 #define pte_offset(dir, vaddr) 		(pmd_page_paddr((*dir)) + pte_index(vaddr) * sizeof(pte_t))
 
+/*
+ * The linear kernel range starts at the bottom of the virtual address
+ * space. Testing the top bit for the start of the region is a
+ * sufficient check and avoids having to worry about the tag.
+ */
+#define is_linear_addr(addr)	((info->kernel_version < KERNEL_VERSION(5, 4, 0)) ?	\
+	(!!((unsigned long)(addr) & (1UL << (vabits_actual - 1)))) : \
+	(!((unsigned long)(addr) & (1UL << (vabits_actual - 1)))))
+
 static unsigned long long
 __pa(unsigned long vaddr)
 {
 	if (kimage_voffset == NOT_FOUND_NUMBER ||
-			(vaddr >= PAGE_OFFSET))
-		return (vaddr - PAGE_OFFSET + info->phys_base);
-	else
+			is_linear_addr(vaddr)) {
+		if (info->kernel_version < KERNEL_VERSION(5, 4, 0))
+			return ((vaddr & ~PAGE_OFFSET) + info->phys_base);
+		else
+			return (vaddr + info->phys_base - PAGE_OFFSET);
+	} else
 		return (vaddr - kimage_voffset);
 }
 
@@ -254,6 +280,7 @@ static int calculate_plat_config(void)
 			(PAGESIZE() == SZ_64K && va_bits == 42)) {
 		pgtable_level = 2;
 	} else if ((PAGESIZE() == SZ_64K && va_bits == 48) ||
+			(PAGESIZE() == SZ_64K && va_bits == 52) ||
 			(PAGESIZE() == SZ_4K && va_bits == 39) ||
 			(PAGESIZE() == SZ_16K && va_bits == 47)) {
 		pgtable_level = 3;
@@ -288,8 +315,9 @@ get_phys_base_arm64(void)
 		return TRUE;
 	}
 
+	/* Ignore the 1st PT_LOAD */
 	if (get_num_pt_loads() && PAGE_OFFSET) {
-		for (i = 0;
+		for (i = 1;
 		    get_pt_load(i, &phys_start, NULL, &virt_start, NULL);
 		    i++) {
 			if (virt_start != NOT_KV_ADDR
@@ -346,6 +374,143 @@ get_stext_symbol(void)
 	return(found ? kallsym : FALSE);
 }
 
+static int
+get_va_bits_from_stext_arm64(void)
+{
+	ulong _stext;
+
+	_stext = get_stext_symbol();
+	if (!_stext) {
+		ERRMSG("Can't get the symbol of _stext.\n");
+		return FALSE;
+	}
+
+	/* Derive va_bits as per arch/arm64/Kconfig. Note that this is a
+	 * best case approximation at the moment, as there can be
+	 * inconsistencies in this calculation (for e.g., for
+	 * 52-bit kernel VA case, even the 48th bit might be set in
+	 * the _stext symbol).
+	 *
+	 * So, we need to rely on the actual VA_BITS symbol in the
+	 * vmcoreinfo for a accurate value.
+	 *
+	 */
+	if ((_stext & PAGE_OFFSET_52) == PAGE_OFFSET_52) {
+		va_bits = 52;
+	} else if ((_stext & PAGE_OFFSET_48) == PAGE_OFFSET_48) {
+		va_bits = 48;
+	} else if ((_stext & PAGE_OFFSET_47) == PAGE_OFFSET_47) {
+		va_bits = 47;
+	} else if ((_stext & PAGE_OFFSET_42) == PAGE_OFFSET_42) {
+		va_bits = 42;
+	} else if ((_stext & PAGE_OFFSET_39) == PAGE_OFFSET_39) {
+		va_bits = 39;
+	} else if ((_stext & PAGE_OFFSET_36) == PAGE_OFFSET_36) {
+		va_bits = 36;
+	} else {
+		ERRMSG("Cannot find a proper _stext for calculating VA_BITS\n");
+		return FALSE;
+	}
+
+	DEBUG_MSG("va_bits    : %d (_stext) (approximation)\n", va_bits);
+
+	return TRUE;
+}
+
+/* Note that its important to note that the
+ * ID_AA64MMFR2_EL1 architecture register can be read
+ * only on ARMv8.2 arch variants and above, so we use
+ * the gcc construct '__attribute__ ((target ("arch=armv8.2-a")))'
+ * here which is a arch extension (see AArch64-Target-selection-directives
+ * documentation from ARM) just for this function to make
+ * sure it compiles well with binutils/gcc.
+ */
+__attribute__ ((target ("arch=armv8.2-a")))
+static unsigned long
+read_id_aa64mmfr2_el1(void)
+{
+	return get_cpu_ftr(ID_AA64MMFR2_EL1);
+}
+
+static int
+get_vabits_actual_from_id_aa64mmfr2_el1(void)
+{
+	int l_vabits_actual;
+	unsigned long val;
+
+	/* Check if ID_AA64MMFR2_EL1 CPU-ID register indicates
+	 * ARMv8.2/LVA support:
+	 * VARange, bits [19:16]
+	 *   From ARMv8.2:
+	 *   Indicates support for a larger virtual address.
+	 *   Defined values are:
+	 *     0b0000 VMSAv8-64 supports 48-bit VAs.
+	 *     0b0001 VMSAv8-64 supports 52-bit VAs when using the 64KB
+	 *            page size. The other translation granules support
+	 *            48-bit VAs.
+	 *
+	 * See ARMv8 ARM for more details.
+	 */
+	if (!(getauxval(AT_HWCAP) & HWCAP_CPUID)) {
+		ERRMSG("arm64 CPUID registers unavailable.\n");
+		return ERROR;
+	}
+
+	val = read_id_aa64mmfr2_el1();
+	val = (val & ID_AA64MMFR2_LVA_MASK) > ID_AA64MMFR2_LVA_SHIFT;
+
+	if ((val == 0x1) && (PAGESIZE() == SZ_64K))
+		l_vabits_actual = 52;
+	else
+		l_vabits_actual = 48;
+
+	return l_vabits_actual;
+}
+
+static void
+get_page_offset_arm64(void)
+{
+	/* Check if 'vabits_actual' is initialized yet.
+	 * If not, our best bet is to read ID_AA64MMFR2_EL1 CPU-ID
+	 * register.
+	 */
+	if (!vabits_actual) {
+		vabits_actual = get_vabits_actual_from_id_aa64mmfr2_el1();
+		if (vabits_actual == ERROR) {
+			/* If we cannot read ID_AA64MMFR2_EL1 arch
+			 * register, our last option is to use VA_BITS
+			 * to calculate the PAGE_OFFSET value.
+			 *
+			 * See arch/arm64/include/asm/memory.h for more
+			 * details of the PAGE_OFFSET calculation.
+			 */
+			info->page_offset = (-(1UL << va_bits));
+			DEBUG_MSG("page_offset    : %lx (via va_bits)\n",
+					info->page_offset);
+			return;
+		} else
+			DEBUG_MSG("vabits_actual : %d  (via id_aa64mmfr2_el1)\n",
+					vabits_actual);
+	}
+
+	if (!populate_kernel_version()) {
+		ERRMSG("Cannot get information about current kernel\n");
+		return;
+	}
+
+	/* See arch/arm64/include/asm/memory.h for more details of
+	 * the PAGE_OFFSET calculation.
+	 */
+	if (info->kernel_version < KERNEL_VERSION(5, 4, 0))
+		info->page_offset = ((0xffffffffffffffffUL) -
+				((1UL) << (vabits_actual - 1)) + 1);
+	else
+		info->page_offset = (-(1UL << vabits_actual));
+
+	DEBUG_MSG("page_offset   : %lx (via vabits_actual)\n",
+			info->page_offset);
+}
+
 int
 get_machdep_info_arm64(void)
 {
@@ -360,8 +525,33 @@ get_machdep_info_arm64(void)
 	/* Check if va_bits is still not initialized. If still 0, call
 	 * get_versiondep_info() to initialize the same.
 	 */
+	if (NUMBER(VA_BITS) != NOT_FOUND_NUMBER) {
+		va_bits = NUMBER(VA_BITS);
+		DEBUG_MSG("va_bits       : %d (vmcoreinfo)\n",
+				va_bits);
+	}
+
+	/* Check if va_bits is still not initialized. If still 0, call
+	 * get_versiondep_info() to initialize the same from _stext
+	 * symbol.
+	 */
 	if (!va_bits)
-		get_versiondep_info_arm64();
+		if (get_va_bits_from_stext_arm64() == FALSE)
+			return FALSE;
+
+	/* See TCR_EL1, Translation Control Register (EL1) register
+	 * description in the ARMv8 Architecture Reference Manual.
+	 * Basically, we can use the TCR_EL1.T1SZ
+	 * value to determine the virtual addressing range supported
+	 * in the kernel-space (i.e. vabits_actual).
+	 */
+	if (NUMBER(TCR_EL1_T1SZ) != NOT_FOUND_NUMBER) {
+		vabits_actual = 64 - NUMBER(TCR_EL1_T1SZ);
+		DEBUG_MSG("vabits_actual : %d (vmcoreinfo)\n",
+				vabits_actual);
+	}
+
+	get_page_offset_arm64();
 
 	if (!calculate_plat_config()) {
 		ERRMSG("Can't determine platform config values\n");
@@ -399,34 +589,11 @@ get_xen_info_arm64(void)
 int
 get_versiondep_info_arm64(void)
 {
-	ulong _stext;
+	if (!va_bits)
+		if (get_va_bits_from_stext_arm64() == FALSE)
+			return FALSE;
 
-	_stext = get_stext_symbol();
-	if (!_stext) {
-		ERRMSG("Can't get the symbol of _stext.\n");
-		return FALSE;
-	}
-
-	/* Derive va_bits as per arch/arm64/Kconfig */
-	if ((_stext & PAGE_OFFSET_36) == PAGE_OFFSET_36) {
-		va_bits = 36;
-	} else if ((_stext & PAGE_OFFSET_39) == PAGE_OFFSET_39) {
-		va_bits = 39;
-	} else if ((_stext & PAGE_OFFSET_42) == PAGE_OFFSET_42) {
-		va_bits = 42;
-	} else if ((_stext & PAGE_OFFSET_47) == PAGE_OFFSET_47) {
-		va_bits = 47;
-	} else if ((_stext & PAGE_OFFSET_48) == PAGE_OFFSET_48) {
-		va_bits = 48;
-	} else {
-		ERRMSG("Cannot find a proper _stext for calculating VA_BITS\n");
-		return FALSE;
-	}
-
-	info->page_offset = (0xffffffffffffffffUL) << (va_bits - 1);
-
-	DEBUG_MSG("va_bits      : %d\n", va_bits);
-	DEBUG_MSG("page_offset  : %lx\n", info->page_offset);
+	get_page_offset_arm64();
 
 	return TRUE;
 }
