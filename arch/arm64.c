@@ -41,6 +41,7 @@ typedef struct {
 
 static int pgtable_level;
 static int va_bits;
+static int max_user_va_bits;
 static unsigned long kimage_voffset;
 
 #define SZ_4K			(4 * 1024)
@@ -61,7 +62,7 @@ static unsigned long kimage_voffset;
 
 #define PAGE_MASK		(~(PAGESIZE() - 1))
 #define PGDIR_SHIFT		((PAGESHIFT() - 3) * pgtable_level + 3)
-#define PTRS_PER_PGD		(1 << (va_bits - PGDIR_SHIFT))
+#define PTRS_PER_PGD		(1 << ((max_user_va_bits) - PGDIR_SHIFT))
 #define PUD_SHIFT		get_pud_shift_arm64()
 #define PUD_SIZE		(1UL << PUD_SHIFT)
 #define PUD_MASK		(~(PUD_SIZE - 1))
@@ -73,6 +74,10 @@ static unsigned long kimage_voffset;
 #define PTRS_PER_PMD		PTRS_PER_PTE
 
 #define PAGE_PRESENT		(1 << 0)
+
+/*
+ * Section address mask and size definitions.
+ */
 #define SECTIONS_SIZE_BITS	30
 /* Highest possible physical address supported */
 #define PHYS_MASK_SHIFT		48
@@ -284,14 +289,83 @@ get_stext_symbol(void)
 	return(found ? kallsym : FALSE);
 }
 
+static int
+get_va_bits_from_stext_arm64(void)
+{
+	ulong _stext;
+
+	_stext = get_stext_symbol();
+	if (!_stext) {
+		ERRMSG("Can't get the symbol of _stext.\n");
+		return FALSE;
+	}
+
+	/* Derive va_bits as per arch/arm64/Kconfig */
+	if ((_stext & PAGE_OFFSET_36) == PAGE_OFFSET_36) {
+		va_bits = 36;
+	} else if ((_stext & PAGE_OFFSET_39) == PAGE_OFFSET_39) {
+		va_bits = 39;
+	} else if ((_stext & PAGE_OFFSET_42) == PAGE_OFFSET_42) {
+		va_bits = 42;
+	} else if ((_stext & PAGE_OFFSET_47) == PAGE_OFFSET_47) {
+		va_bits = 47;
+	} else if ((_stext & PAGE_OFFSET_48) == PAGE_OFFSET_48) {
+		va_bits = 48;
+	} else {
+		ERRMSG("Cannot find a proper _stext for calculating VA_BITS\n");
+		return FALSE;
+	}
+
+	DEBUG_MSG("va_bits      : %d\n", va_bits);
+
+	return TRUE;
+}
+
+static void
+get_page_offset_arm64(void)
+{
+	info->page_offset = (0xffffffffffffffffUL) << (va_bits - 1);
+
+	DEBUG_MSG("page_offset  : %lx\n", info->page_offset);
+}
+
 int
 get_machdep_info_arm64(void)
 {
 	/* Check if va_bits is still not initialized. If still 0, call
 	 * get_versiondep_info() to initialize the same.
 	 */
+	if (NUMBER(VA_BITS) != NOT_FOUND_NUMBER) {
+		va_bits = NUMBER(VA_BITS);
+		DEBUG_MSG("va_bits    : %d (vmcoreinfo)\n",
+				va_bits);
+	}
+
+	/* Check if va_bits is still not initialized. If still 0, call
+	 * get_versiondep_info() to initialize the same from _stext
+	 * symbol.
+	 */
 	if (!va_bits)
-		get_versiondep_info_arm64();
+		if (get_va_bits_from_stext_arm64() == ERROR)
+			return ERROR;
+
+	get_page_offset_arm64();
+
+	if (NUMBER(MAX_USER_VA_BITS) != NOT_FOUND_NUMBER) {
+		max_user_va_bits = NUMBER(MAX_USER_VA_BITS);
+		DEBUG_MSG("max_user_va_bits : %d (vmcoreinfo)\n",
+				max_user_va_bits);
+	}
+
+	/* Check if max_user_va_bits is still not initialized.
+	 * If still 0, its not available in vmcoreinfo and its
+	 * safe to initialize it with va_bits.
+	 */
+	if (!max_user_va_bits) {
+		max_user_va_bits = va_bits;
+		DEBUG_MSG("max_user_va_bits : %d (default = va_bits)\n",
+				max_user_va_bits);
+	}
 
 	if (!calculate_plat_config()) {
 		ERRMSG("Can't determine platform config values\n");
@@ -330,34 +404,11 @@ get_xen_info_arm64(void)
 int
 get_versiondep_info_arm64(void)
 {
-	ulong _stext;
+	if (!va_bits)
+		if (get_va_bits_from_stext_arm64() == ERROR)
+			return ERROR;
 
-	_stext = get_stext_symbol();
-	if (!_stext) {
-		ERRMSG("Can't get the symbol of _stext.\n");
-		return FALSE;
-	}
-
-	/* Derive va_bits as per arch/arm64/Kconfig */
-	if ((_stext & PAGE_OFFSET_36) == PAGE_OFFSET_36) {
-		va_bits = 36;
-	} else if ((_stext & PAGE_OFFSET_39) == PAGE_OFFSET_39) {
-		va_bits = 39;
-	} else if ((_stext & PAGE_OFFSET_42) == PAGE_OFFSET_42) {
-		va_bits = 42;
-	} else if ((_stext & PAGE_OFFSET_47) == PAGE_OFFSET_47) {
-		va_bits = 47;
-	} else if ((_stext & PAGE_OFFSET_48) == PAGE_OFFSET_48) {
-		va_bits = 48;
-	} else {
-		ERRMSG("Cannot find a proper _stext for calculating VA_BITS\n");
-		return FALSE;
-	}
-
-	info->page_offset = (0xffffffffffffffffUL) << (va_bits - 1);
-
-	DEBUG_MSG("va_bits      : %d\n", va_bits);
-	DEBUG_MSG("page_offset  : %lx\n", info->page_offset);
+	get_page_offset_arm64();
 
 	return TRUE;
 }
