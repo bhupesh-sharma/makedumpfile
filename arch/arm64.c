@@ -47,6 +47,7 @@ typedef struct {
 static int lpa_52_bit_support_available;
 static int pgtable_level;
 static int va_bits;
+static int vabits_actual;
 static unsigned long kimage_voffset;
 
 #define SZ_4K			4096
@@ -218,12 +219,19 @@ pmd_page_paddr(pmd_t pmd)
 #define pte_index(vaddr) 		(((vaddr) >> PAGESHIFT()) & (PTRS_PER_PTE - 1))
 #define pte_offset(dir, vaddr) 		(pmd_page_paddr((*dir)) + pte_index(vaddr) * sizeof(pte_t))
 
+/*
+ * The linear kernel range starts at the bottom of the virtual address
+ * space. Testing the top bit for the start of the region is a
+ * sufficient check and avoids having to worry about the tag.
+ */
+#define is_linear_addr(addr)	(!(((unsigned long)addr) & (1UL << (vabits_actual - 1))))
+
 static unsigned long long
 __pa(unsigned long vaddr)
 {
 	if (kimage_voffset == NOT_FOUND_NUMBER ||
-			(vaddr >= PAGE_OFFSET))
-		return (vaddr - PAGE_OFFSET + info->phys_base);
+			is_linear_addr(vaddr))
+		return (vaddr + info->phys_base - PAGE_OFFSET);
 	else
 		return (vaddr - kimage_voffset);
 }
@@ -253,6 +261,7 @@ static int calculate_plat_config(void)
 			(PAGESIZE() == SZ_64K && va_bits == 42)) {
 		pgtable_level = 2;
 	} else if ((PAGESIZE() == SZ_64K && va_bits == 48) ||
+			(PAGESIZE() == SZ_64K && va_bits == 52) ||
 			(PAGESIZE() == SZ_4K && va_bits == 39) ||
 			(PAGESIZE() == SZ_16K && va_bits == 47)) {
 		pgtable_level = 3;
@@ -285,6 +294,16 @@ get_phys_base_arm64(void)
 		DEBUG_MSG("phys_base    : %lx (vmcoreinfo)\n",
 				info->phys_base);
 		return TRUE;
+	}
+
+	/* If both vabits_actual and va_bits are now initialized, always
+	 * prefer vabits_actual over va_bits to calculate PAGE_OFFSET
+	 * value.
+	 */
+	if (vabits_actual && va_bits && vabits_actual != va_bits) {
+		info->page_offset = (-(1UL << vabits_actual));
+		DEBUG_MSG("page_offset    : %lx (via vabits_actual)\n",
+				info->page_offset);
 	}
 
 	if (get_num_pt_loads() && PAGE_OFFSET) {
@@ -406,6 +425,73 @@ get_stext_symbol(void)
 	return(found ? kallsym : FALSE);
 }
 
+static int
+get_va_bits_from_stext_arm64(void)
+{
+	ulong _stext;
+
+	_stext = get_stext_symbol();
+	if (!_stext) {
+		ERRMSG("Can't get the symbol of _stext.\n");
+		return FALSE;
+	}
+
+	/* Derive va_bits as per arch/arm64/Kconfig. Note that this is a
+	 * best case approximation at the moment, as there can be
+	 * inconsistencies in this calculation (for e.g., for
+	 * 52-bit kernel VA case, even the 48th bit might be set in
+	 * the _stext symbol).
+	 *
+	 * So, we need to rely on the actual VA_BITS symbol in the
+	 * vmcoreinfo for a accurate value.
+	 *
+	 * TODO: Improve this further once there is a closure with arm64
+	 * kernel maintainers on the same.
+	 */
+	if ((_stext & PAGE_OFFSET_52) == PAGE_OFFSET_52) {
+		va_bits = 52;
+	} else if ((_stext & PAGE_OFFSET_48) == PAGE_OFFSET_48) {
+		va_bits = 48;
+	} else if ((_stext & PAGE_OFFSET_47) == PAGE_OFFSET_47) {
+		va_bits = 47;
+	} else if ((_stext & PAGE_OFFSET_42) == PAGE_OFFSET_42) {
+		va_bits = 42;
+	} else if ((_stext & PAGE_OFFSET_39) == PAGE_OFFSET_39) {
+		va_bits = 39;
+	} else if ((_stext & PAGE_OFFSET_36) == PAGE_OFFSET_36) {
+		va_bits = 36;
+	} else {
+		ERRMSG("Cannot find a proper _stext for calculating VA_BITS\n");
+		return FALSE;
+	}
+
+	DEBUG_MSG("va_bits    : %d (_stext) (approximation)\n", va_bits);
+
+	return TRUE;
+}
+
+static void
+get_page_offset_arm64(void)
+{
+	/* Check if 'vabits_actual' is initialized yet.
+	 * If not, our best bet is to use 'va_bits' to calculate
+	 * the PAGE_OFFSET value, otherwise use 'vabits_actual'
+	 * for the same.
+	 *
+	 * See arch/arm64/include/asm/memory.h for more details.
+	 */
+	if (!vabits_actual) {
+		info->page_offset = (-(1UL << va_bits));
+		DEBUG_MSG("page_offset    : %lx (approximation)\n",
+					info->page_offset);
+	} else {
+		info->page_offset = (-(1UL << vabits_actual));
+		DEBUG_MSG("page_offset    : %lx (accurate)\n",
+					info->page_offset);
+	}
+
+}
+
 int
 get_machdep_info_arm64(void)
 {
@@ -420,8 +506,33 @@ get_machdep_info_arm64(void)
 	/* Check if va_bits is still not initialized. If still 0, call
 	 * get_versiondep_info() to initialize the same.
 	 */
+	if (NUMBER(VA_BITS) != NOT_FOUND_NUMBER) {
+		va_bits = NUMBER(VA_BITS);
+		DEBUG_MSG("va_bits        : %d (vmcoreinfo)\n",
+				va_bits);
+	}
+
+	/* Check if va_bits is still not initialized. If still 0, call
+	 * get_versiondep_info() to initialize the same from _stext
+	 * symbol.
+	 */
 	if (!va_bits)
-		get_versiondep_info_arm64();
+		if (get_va_bits_from_stext_arm64() == FALSE)
+			return FALSE;
+
+	get_page_offset_arm64();
+
+	/* See TCR_EL1, Translation Control Register (EL1) register
+	 * description in the ARMv8 Architecture Reference Manual.
+	 * Basically, we can use the TCR_EL1.T1SZ
+	 * value to determine the virtual addressing range supported
+	 * in the kernel-space (i.e. vabits_actual).
+	 */
+	if (NUMBER(tcr_el1_t1sz) != NOT_FOUND_NUMBER) {
+		vabits_actual = 64 - NUMBER(tcr_el1_t1sz);
+		DEBUG_MSG("vabits_actual  : %d (vmcoreinfo)\n",
+				vabits_actual);
+	}
 
 	if (!calculate_plat_config()) {
 		ERRMSG("Can't determine platform config values\n");
@@ -459,34 +570,11 @@ get_xen_info_arm64(void)
 int
 get_versiondep_info_arm64(void)
 {
-	ulong _stext;
+	if (!va_bits)
+		if (get_va_bits_from_stext_arm64() == FALSE)
+			return FALSE;
 
-	_stext = get_stext_symbol();
-	if (!_stext) {
-		ERRMSG("Can't get the symbol of _stext.\n");
-		return FALSE;
-	}
-
-	/* Derive va_bits as per arch/arm64/Kconfig */
-	if ((_stext & PAGE_OFFSET_36) == PAGE_OFFSET_36) {
-		va_bits = 36;
-	} else if ((_stext & PAGE_OFFSET_39) == PAGE_OFFSET_39) {
-		va_bits = 39;
-	} else if ((_stext & PAGE_OFFSET_42) == PAGE_OFFSET_42) {
-		va_bits = 42;
-	} else if ((_stext & PAGE_OFFSET_47) == PAGE_OFFSET_47) {
-		va_bits = 47;
-	} else if ((_stext & PAGE_OFFSET_48) == PAGE_OFFSET_48) {
-		va_bits = 48;
-	} else {
-		ERRMSG("Cannot find a proper _stext for calculating VA_BITS\n");
-		return FALSE;
-	}
-
-	info->page_offset = (0xffffffffffffffffUL) << (va_bits - 1);
-
-	DEBUG_MSG("va_bits      : %d\n", va_bits);
-	DEBUG_MSG("page_offset  : %lx\n", info->page_offset);
+	get_page_offset_arm64();
 
 	return TRUE;
 }
