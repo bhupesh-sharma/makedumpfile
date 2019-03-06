@@ -63,20 +63,27 @@ int
 set_s390x_max_physmem_bits(void)
 {
 	long array_len = ARRAY_LENGTH(mem_section);
-	/*
-	 * The older s390x kernels uses _MAX_PHYSMEM_BITS as 42 and the
-	 * newer kernels uses 46 bits.
-	 */
 
-	info->max_physmem_bits  = _MAX_PHYSMEM_BITS_ORIG ;
-	if ((array_len == (NR_MEM_SECTIONS() / _SECTIONS_PER_ROOT_EXTREME()))
-		|| (array_len == (NR_MEM_SECTIONS() / _SECTIONS_PER_ROOT())))
+	/* Check if we can get MAX_PHYSMEM_BITS from vmcoreinfo */
+	if (NUMBER(MAX_PHYSMEM_BITS) != NOT_FOUND_NUMBER) {
+		info->max_physmem_bits = NUMBER(MAX_PHYSMEM_BITS);
 		return TRUE;
+	} else { 
+		/*
+		 * The older s390x kernels uses _MAX_PHYSMEM_BITS as 42 and the
+		 * newer kernels uses 46 bits.
+		 */
 
-	info->max_physmem_bits  = _MAX_PHYSMEM_BITS_3_3;
-	if ((array_len == (NR_MEM_SECTIONS() / _SECTIONS_PER_ROOT_EXTREME()))
-		|| (array_len == (NR_MEM_SECTIONS() / _SECTIONS_PER_ROOT())))
-		return TRUE;
+		info->max_physmem_bits  = _MAX_PHYSMEM_BITS_ORIG ;
+		if ((array_len == (NR_MEM_SECTIONS() / _SECTIONS_PER_ROOT_EXTREME()))
+				|| (array_len == (NR_MEM_SECTIONS() / _SECTIONS_PER_ROOT())))
+			return TRUE;
+
+		info->max_physmem_bits  = _MAX_PHYSMEM_BITS_3_3;
+		if ((array_len == (NR_MEM_SECTIONS() / _SECTIONS_PER_ROOT_EXTREME()))
+				|| (array_len == (NR_MEM_SECTIONS() / _SECTIONS_PER_ROOT())))
+			return TRUE;
+	}
 
 	return FALSE;
 }
