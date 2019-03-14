@@ -252,14 +252,15 @@ static int calculate_plat_config(void)
 	if ((PAGESIZE() == SZ_16K && va_bits == 36) ||
 			(PAGESIZE() == SZ_64K && va_bits == 42)) {
 		pgtable_level = 2;
-	} else if ((PAGESIZE() == SZ_64K && va_bits == 48) ||
+	} else if ((PAGESIZE() == SZ_64K && va_bits == 52) ||
+			(PAGESIZE() == SZ_64K && va_bits == 48) ||
 			(PAGESIZE() == SZ_4K && va_bits == 39) ||
 			(PAGESIZE() == SZ_16K && va_bits == 47)) {
 		pgtable_level = 3;
 	} else if ((PAGESIZE() != SZ_64K && va_bits == 48)) {
 		pgtable_level = 4;
 	} else {
-		ERRMSG("PAGE SIZE %#lx and VA Bits %d not supported\n",
+		ERRMSG("PAGE SIZE %ld and VA Bits %d not supported\n",
 				PAGESIZE(), va_bits);
 		return FALSE;
 	}
@@ -408,6 +409,8 @@ get_va_bits_from_stext_arm64(void)
 		va_bits = 47;
 	} else if ((_stext & PAGE_OFFSET_48) == PAGE_OFFSET_48) {
 		va_bits = 48;
+	} else if ((_stext & PAGE_OFFSET_52) == PAGE_OFFSET_52) {
+		va_bits = 52;
 	} else {
 		ERRMSG("Cannot find a proper _stext for calculating VA_BITS\n");
 		return FALSE;
