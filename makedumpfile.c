@@ -2575,6 +2575,7 @@ read_vmcoreinfo_string(char *str_in, char *str_out)
 int
 read_vmcoreinfo(void)
 {
+	MSG("Bhupesh inside %s.\n", __func__);
 	if (!read_vmcoreinfo_basic_info())
 		return FALSE;
 
@@ -2775,6 +2776,7 @@ read_vmcoreinfo_from_vmcore(off_t offset, unsigned long size, int flag_xen_hv)
 {
 	int ret = FALSE;
 
+	MSG("Bhupesh inside %s.\n", __func__);
 	/*
 	 * Copy vmcoreinfo to /tmp/vmcoreinfoXXXXXX.
 	 */
@@ -4027,6 +4029,7 @@ initial(void)
 		info->file_vmcoreinfo = file_vmcoreinfo;
 
 		info->read_text_vmcoreinfo = 1;
+		MSG("Bhupesh inside %s.\n", __func__);
 		if (!read_vmcoreinfo())
 			return FALSE;
 		info->read_text_vmcoreinfo = 0;
