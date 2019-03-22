@@ -405,12 +405,12 @@ get_va_bits_from_stext_arm64(void)
 		va_bits = 39;
 	} else if ((_stext & PAGE_OFFSET_42) == PAGE_OFFSET_42) {
 		va_bits = 42;
+	} else if ((_stext & PAGE_OFFSET_52) == PAGE_OFFSET_52) {
+		va_bits = 52;
 	} else if ((_stext & PAGE_OFFSET_47) == PAGE_OFFSET_47) {
 		va_bits = 47;
 	} else if ((_stext & PAGE_OFFSET_48) == PAGE_OFFSET_48) {
 		va_bits = 48;
-	} else if ((_stext & PAGE_OFFSET_52) == PAGE_OFFSET_52) {
-		va_bits = 52;
 	} else {
 		ERRMSG("Cannot find a proper _stext for calculating VA_BITS\n");
 		return FALSE;
