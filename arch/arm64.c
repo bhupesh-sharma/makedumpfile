@@ -424,7 +424,9 @@ get_va_bits_from_stext_arm64(void)
 static void
 get_page_offset_arm64(void)
 {
-	info->page_offset = (0xffffffffffffffffUL) << (va_bits - 1);
+	info->page_offset = ((0xffffffffffffffffUL) -
+					((1UL) << va_bits) + 1);
+	//(0xffffffffffffffffUL) << (va_bits - 1);
 
 	DEBUG_MSG("page_offset  : %lx\n", info->page_offset);
 }
