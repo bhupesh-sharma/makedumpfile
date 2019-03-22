@@ -4057,13 +4057,16 @@ initial(void)
 
 		debug_info = TRUE;
 	} else {
+		ERRMSG("Inside initial now, Check whether /proc/vmcore contains vmcoreinfo!\n");
 		/*
 		 * Check whether /proc/vmcore contains vmcoreinfo,
 		 * and get both the offset and the size.
 		 */
 		if (!has_vmcoreinfo()) {
-			if (info->max_dump_level <= DL_EXCLUDE_ZERO)
+			if (info->max_dump_level <= DL_EXCLUDE_ZERO) {
+				ERRMSG("Inside initial, goto out!\n");
 				goto out;
+			}
 
 			MSG("%s doesn't contain vmcoreinfo.\n",
 			    info->name_memory);
@@ -4081,6 +4084,7 @@ initial(void)
 	 *       in /proc/vmcore. vmcoreinfo in /proc/vmcore is more reliable
 	 *       than -x/-i option.
 	 */
+	ERRMSG("Inside initial now, Get the debug information from /proc/vmcore!\n");
 	if (has_vmcoreinfo()) {
 		get_vmcoreinfo(&offset, &size);
 		if (!read_vmcoreinfo_from_vmcore(offset, size, FALSE))
@@ -11250,14 +11254,23 @@ int show_mem_usage(void)
 	if (!get_phys_base())
 		return FALSE;
 
-	if (!get_sys_kernel_vmcoreinfo(&vmcoreinfo_addr, &vmcoreinfo_len))
+	ERRMSG("Calling get_sys_kernel_vmcoreinfo now!\n");
+	if (!get_sys_kernel_vmcoreinfo(&vmcoreinfo_addr, &vmcoreinfo_len)) {
+		ERRMSG("get_sys_kernel_vmcoreinfo returned FALSE!\n");
 		return FALSE;
+	}
 
-	if (!set_kcore_vmcoreinfo(vmcoreinfo_addr, vmcoreinfo_len))
+	ERRMSG("Calling set_kcore_vmcoreinfo now!\n");
+	if (!set_kcore_vmcoreinfo(vmcoreinfo_addr, vmcoreinfo_len)) {
+		ERRMSG("set_kcore_vmcoreinfo returned FALSE!\n");
 		return FALSE;
+	}
 
-	if (!initial())
+	ERRMSG("Calling initial now!\n");
+	if (!initial()) {
+		ERRMSG("initial returned FALSE!\n");
 		return FALSE;
+	}
 
 	if (!open_dump_bitmap())
 		return FALSE;
