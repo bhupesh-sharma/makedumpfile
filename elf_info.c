@@ -405,6 +405,9 @@ int set_kcore_vmcoreinfo(uint64_t vmcoreinfo_addr, uint64_t vmcoreinfo_len)
 	size_desc   = note_descsz(note);
 	offset_desc = offset + offset_note_desc(note);
 
+	ERRMSG("Inside %s, size_desc: %d, offset_desc: %d\n",
+		    __func__, size_desc, offset_desc);
+
 	set_vmcoreinfo(offset_desc, size_desc);
 
 	return TRUE;
@@ -1192,8 +1195,12 @@ get_pt_note(off_t *offset, unsigned long *size)
 int
 has_vmcoreinfo(void)
 {
-	if (offset_vmcoreinfo && size_vmcoreinfo)
+	if (offset_vmcoreinfo && size_vmcoreinfo) {
+		ERRMSG("Inside has_vmcoreinfo, return TRUE!\n");
 		return TRUE;
+	}
+
+	ERRMSG("Inside has_vmcoreinfo, return FALSE!\n");
 	return FALSE;
 }
 
