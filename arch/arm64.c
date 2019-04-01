@@ -47,6 +47,7 @@ typedef struct {
 static int lpa_52_bit_support_available;
 static int pgtable_level;
 static int va_bits;
+static int va_bits_actual;
 static int ptrs_per_pgd;
 static unsigned long kimage_voffset;
 
@@ -218,14 +219,44 @@ pmd_page_paddr(pmd_t pmd)
 #define pte_index(vaddr) 		(((vaddr) >> PAGESHIFT()) & (PTRS_PER_PTE - 1))
 #define pte_offset(dir, vaddr) 		(pmd_page_paddr((*dir)) + pte_index(vaddr) * sizeof(pte_t))
 
+/*
+ * The linear kernel range starts in the middle of the virtual adddress
+ * space. Testing the top bit for the start of the region is a
+ * sufficient check.
+ */
+static inline int
+is_linear_range_address(unsigned long vaddr)
+{
+	if (va_bits_actual)
+		return !(vaddr & (1UL << (va_bits_actual - 1)));
+	else
+		return !!(vaddr & (1UL << (va_bits - 1)));
+}
+
+static inline unsigned long long
+lm_to_phys(unsigned long vaddr)
+{
+	return (vaddr + info->phys_base - PAGE_OFFSET);
+}
+
+static inline unsigned long long
+kimg_to_phys(unsigned long vaddr)
+{
+	if (kimage_voffset == NOT_FOUND_NUMBER) {
+		ERRMSG("kimage_voffset is not available in VMCOREINFO\n");
+		return FALSE;
+	}
+
+	return (vaddr - kimage_voffset);
+}
+
 static unsigned long long
 __pa(unsigned long vaddr)
 {
-	if (kimage_voffset == NOT_FOUND_NUMBER ||
-			(vaddr >= PAGE_OFFSET))
-		return (vaddr - PAGE_OFFSET + info->phys_base);
+	if (is_linear_range_address(vaddr))
+		return lm_to_phys(vaddr);
 	else
-		return (vaddr - kimage_voffset);
+		return kimg_to_phys(vaddr);
 }
 
 static pud_t *
@@ -294,6 +325,7 @@ get_phys_base_arm64(void)
 		    i++) {
 			if (virt_start != NOT_KV_ADDR
 			    && virt_start >= PAGE_OFFSET
+			    && virt_start < PAGE_OFFSET_END(va_bits_actual)
 			    && phys_start != NOT_PADDR) {
 				info->phys_base = phys_start -
 					(virt_start & ~PAGE_OFFSET);
@@ -424,9 +456,11 @@ get_va_bits_from_stext_arm64(void)
 static void
 get_page_offset_arm64(void)
 {
-	info->page_offset = ((0xffffffffffffffffUL) -
-					((1UL) << va_bits) + 1);
-	//(0xffffffffffffffffUL) << (va_bits - 1);
+	if (va_bits_actual)
+		info->page_offset = ((0xffffffffffffffffUL) -
+					(1UL << va_bits_actual) + 1);
+	else
+		info->page_offset = (0xffffffffffffffffUL) << (va_bits - 1);
 
 	DEBUG_MSG("page_offset  : %lx\n", info->page_offset);
 }
@@ -441,6 +475,10 @@ get_machdep_info_arm64(void)
 			lpa_52_bit_support_available = 1;
 	} else
 		info->max_physmem_bits = 48;
+
+	/* Determine if the kernel VA address range is 52-bits: ARMv8.2-LVA - kernel */
+	if (NUMBER(VA_BITS_ACTUAL) != NOT_FOUND_NUMBER)
+		va_bits_actual = NUMBER(VA_BITS_ACTUAL);
 
 	/* Check if va_bits is still not initialized. If still 0, call
 	 * get_versiondep_info() to initialize the same.

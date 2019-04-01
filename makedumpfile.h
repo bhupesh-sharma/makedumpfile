@@ -543,6 +543,8 @@ do { \
 unsigned long get_kvbase_arm64(void);
 #define KVBASE			get_kvbase_arm64()
 #define __START_KERNEL_map	(0xffffffff80000000UL)
+#define PAGE_OFFSET_END(va)	((0xffffffffffffffffUL) - \
+				((1UL) << ((va) - 1)) + 1)
 
 #endif /* aarch64 */
 
@@ -1937,6 +1939,7 @@ struct number_table {
 #ifdef __aarch64__
 	long 	PTRS_PER_PGD;
 	long 	VA_BITS;
+	long 	VA_BITS_ACTUAL;
 	unsigned long	PHYS_OFFSET;
 	unsigned long	kimage_voffset;
 #endif
