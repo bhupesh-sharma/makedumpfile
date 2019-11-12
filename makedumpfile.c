@@ -11698,6 +11698,11 @@ main(int argc, char *argv[])
 		MSG("\n");
 		MSG("The dmesg log is saved to %s.\n", info->name_dumpfile);
 	} else if (info->flag_mem_usage) {
+#ifdef __aarch64__
+		MSG("mem-usage not supported for arm64 architecure.\n");
+		goto out;
+#endif
+
 		if (!check_param_for_creating_dumpfile(argc, argv)) {
 			MSG("Commandline parameter is invalid.\n");
 			MSG("Try `makedumpfile --help' for more information.\n");
