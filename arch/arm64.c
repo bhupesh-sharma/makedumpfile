@@ -48,6 +48,28 @@ static int lpa_52_bit_support_available;
 static int pgtable_level;
 static int va_bits;
 static int vabits_actual;
+/* As per ARMv8 ARM:
+ * Privileged Access Never indicates support for the PAN bit in PSTATE,
+ * SPSR_EL1, SPSR_EL2, SPSR_EL3, and DSPSR_EL0. Defined values are:
+ * 0b0000 PAN not supported.
+ * 0b0001 PAN supported.
+ * 0b0010 PAN supported and AT S1E1RP and AT S1E1WP instructions supported.
+ * All other values are reserved.
+ *
+ * In ARMv8.1, the only permitted value is 0b0001.
+ * From ARMv8.2, the only permitted value is 0b0010.
+ *
+ * Since the LVA (52-bit virtual address) and LPA (52-bit physical
+ * address) support are only available ARMv8.2 onwards, so we can safely
+ * use PAN value = 0x2 as an indication of 52-bit LVA and LPA support
+ * in the hardware.
+ *
+ * Note that a kernel with 52-bit VA support
+ * (via CONFIG_ARM64_VA_BITS_52 option) enabled, running on a
+ * non-ARMv8.2 compliant hardware will still support a maximum
+ * vabits_actual value of 48.
+ */
+static int arm64_pan_support;
 static unsigned long kimage_voffset;
 
 #define SZ_4K			4096
@@ -296,16 +318,6 @@ get_phys_base_arm64(void)
 		return TRUE;
 	}
 
-	/* If both vabits_actual and va_bits are now initialized, always
-	 * prefer vabits_actual over va_bits to calculate PAGE_OFFSET
-	 * value.
-	 */
-	if (vabits_actual && va_bits && vabits_actual != va_bits) {
-		info->page_offset = (-(1UL << vabits_actual));
-		DEBUG_MSG("page_offset    : %lx (via vabits_actual)\n",
-				info->page_offset);
-	}
-
 	if (get_num_pt_loads() && PAGE_OFFSET) {
 		for (i = 0;
 		    get_pt_load(i, &phys_start, NULL, &virt_start, NULL);
@@ -426,7 +438,7 @@ get_stext_symbol(void)
 }
 
 static int
-get_va_bits_from_stext_arm64(void)
+get_vabits_actual_from_stext_arm64(void)
 {
 	ulong _stext;
 
@@ -436,36 +448,31 @@ get_va_bits_from_stext_arm64(void)
 		return FALSE;
 	}
 
-	/* Derive va_bits as per arch/arm64/Kconfig. Note that this is a
-	 * best case approximation at the moment, as there can be
-	 * inconsistencies in this calculation (for e.g., for
-	 * 52-bit kernel VA case, even the 48th bit might be set in
-	 * the _stext symbol).
-	 *
-	 * So, we need to rely on the actual VA_BITS symbol in the
-	 * vmcoreinfo for a accurate value.
-	 *
-	 * TODO: Improve this further once there is a closure with arm64
-	 * kernel maintainers on the same.
-	 */
-	if ((_stext & PAGE_OFFSET_52) == PAGE_OFFSET_52) {
-		va_bits = 52;
-	} else if ((_stext & PAGE_OFFSET_48) == PAGE_OFFSET_48) {
-		va_bits = 48;
-	} else if ((_stext & PAGE_OFFSET_47) == PAGE_OFFSET_47) {
-		va_bits = 47;
-	} else if ((_stext & PAGE_OFFSET_42) == PAGE_OFFSET_42) {
-		va_bits = 42;
-	} else if ((_stext & PAGE_OFFSET_39) == PAGE_OFFSET_39) {
-		va_bits = 39;
-	} else if ((_stext & PAGE_OFFSET_36) == PAGE_OFFSET_36) {
-		va_bits = 36;
+	/* Derive vabits_actual as per arch/arm64/Kconfig. */
+	if (((_stext & PAGE_OFFSET_36) == PAGE_OFFSET_36) &&
+		   (PAGESIZE() == SZ_16K)) {
+		vabits_actual = 36;
+	} else if (((_stext & PAGE_OFFSET_39) == PAGE_OFFSET_39) &&
+		   (PAGESIZE() == SZ_4K)) {
+		vabits_actual = 39;
+	} else if (((_stext & PAGE_OFFSET_42) == PAGE_OFFSET_42) &&
+		   (PAGESIZE() == SZ_64K)) {
+		vabits_actual = 42;
+	} else if (((_stext & PAGE_OFFSET_47) == PAGE_OFFSET_47) &&
+		   (PAGESIZE() == SZ_16K)) {
+		vabits_actual = 47;
+	} else if (((_stext & PAGE_OFFSET_48) == PAGE_OFFSET_48) &&
+		   !arm64_pan_support) {
+		vabits_actual = 48;
+	} else if (((_stext & PAGE_OFFSET_52) == PAGE_OFFSET_52) &&
+		   (PAGESIZE() == SZ_64K) && arm64_pan_support) {
+		vabits_actual = 52;
 	} else {
-		ERRMSG("Cannot find a proper _stext for calculating VA_BITS\n");
+		ERRMSG("Cannot find a proper _stext for calculating vabits_actual\n");
 		return FALSE;
 	}
 
-	DEBUG_MSG("va_bits    : %d (_stext) (approximation)\n", va_bits);
+	DEBUG_MSG("vabits_actual    : %d (_stext : %lx)\n", vabits_actual, _stext);
 
 	return TRUE;
 }
@@ -473,23 +480,12 @@ get_va_bits_from_stext_arm64(void)
 static void
 get_page_offset_arm64(void)
 {
-	/* Check if 'vabits_actual' is initialized yet.
-	 * If not, our best bet is to use 'va_bits' to calculate
-	 * the PAGE_OFFSET value, otherwise use 'vabits_actual'
-	 * for the same.
-	 *
-	 * See arch/arm64/include/asm/memory.h for more details.
-	 */
-	if (!vabits_actual) {
+	if (va_bits != 0)
 		info->page_offset = (-(1UL << va_bits));
-		DEBUG_MSG("page_offset    : %lx (approximation)\n",
-					info->page_offset);
-	} else {
+	else
 		info->page_offset = (-(1UL << vabits_actual));
-		DEBUG_MSG("page_offset    : %lx (accurate)\n",
-					info->page_offset);
-	}
 
+	DEBUG_MSG("page_offset    : %lx \n", info->page_offset);
 }
 
 int
@@ -503,30 +499,17 @@ get_machdep_info_arm64(void)
 	} else
 		info->max_physmem_bits = 48;
 
-	/* Check if va_bits is still not initialized. If still 0, call
-	 * get_versiondep_info() to initialize the same.
-	 */
 	if (NUMBER(VA_BITS) != NOT_FOUND_NUMBER) {
 		va_bits = NUMBER(VA_BITS);
 		DEBUG_MSG("va_bits        : %d (vmcoreinfo)\n",
 				va_bits);
 	}
 
-	/* Check if va_bits is still not initialized. If still 0, call
-	 * get_versiondep_info() to initialize the same from _stext
-	 * symbol.
-	 */
-	if (!va_bits)
-		if (get_va_bits_from_stext_arm64() == FALSE)
-			return FALSE;
-
-	get_page_offset_arm64();
-
 	/* See TCR_EL1, Translation Control Register (EL1) register
-	 * description in the ARMv8 Architecture Reference Manual.
+	 * description in the ARMv8 Architecture Reference Manual (ARM).
 	 * Basically, we can use the TCR_EL1.T1SZ
-	 * value to determine the virtual addressing range supported
-	 * in the kernel-space (i.e. vabits_actual).
+	 * value in vmcoreinfo to determine the virtual addressing
+	 * range supported in the kernel-space (i.e. vabits_actual).
 	 */
 	if (NUMBER(tcr_el1_t1sz) != NOT_FOUND_NUMBER) {
 		vabits_actual = 64 - NUMBER(tcr_el1_t1sz);
@@ -534,7 +517,17 @@ get_machdep_info_arm64(void)
 				vabits_actual);
 	}
 
-	if (!calculate_plat_config()) {
+	/* Check if vabits_actual is still not initialized. If still 0, call
+	 * get_versiondep_info() to initialize the same from _stext
+	 * symbol.
+	 */
+	if (!vabits_actual)
+		if (get_vabits_actual_from_stext_arm64() == FALSE)
+			return FALSE;
+
+	get_page_offset_arm64();
+
+		if (!calculate_plat_config()) {
 		ERRMSG("Can't determine platform config values\n");
 		return FALSE;
 	}
@@ -570,8 +563,8 @@ get_xen_info_arm64(void)
 int
 get_versiondep_info_arm64(void)
 {
-	if (!va_bits)
-		if (get_va_bits_from_stext_arm64() == FALSE)
+	if (!vabits_actual)
+		if (get_vabits_actual_from_stext_arm64() == FALSE)
 			return FALSE;
 
 	get_page_offset_arm64();

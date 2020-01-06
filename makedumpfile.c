@@ -11564,9 +11564,11 @@ main(int argc, char *argv[])
 		MSG("\n");
 		MSG("The dmesg log is saved to %s.\n", info->name_dumpfile);
 	} else if (info->flag_mem_usage) {
+#if 0
 #ifdef __aarch64__
 		MSG("mem-usage not supported for arm64 architecure.\n");
 		goto out;
+#endif
 #endif
 
 		if (!check_param_for_creating_dumpfile(argc, argv)) {
