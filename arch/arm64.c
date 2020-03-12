@@ -298,13 +298,17 @@ get_versiondep_info_arm64(void)
 	}
 
 	/* Derive va_bits as per arch/arm64/Kconfig */
-	if ((_stext & PAGE_OFFSET_36) == PAGE_OFFSET_36) {
+	if (((_stext & PAGE_OFFSET_36) == PAGE_OFFSET_36) &&
+		(PAGESIZE() == SZ_16K)) {
 		va_bits = 36;
-	} else if ((_stext & PAGE_OFFSET_39) == PAGE_OFFSET_39) {
+	} else if (((_stext & PAGE_OFFSET_39) == PAGE_OFFSET_39) &&
+		(PAGESIZE() == SZ_4K)) {
 		va_bits = 39;
-	} else if ((_stext & PAGE_OFFSET_42) == PAGE_OFFSET_42) {
+	} else if (((_stext & PAGE_OFFSET_42) == PAGE_OFFSET_42) &&
+		(PAGESIZE() == SZ_64K)) {
 		va_bits = 42;
-	} else if ((_stext & PAGE_OFFSET_47) == PAGE_OFFSET_47) {
+	} else if (((_stext & PAGE_OFFSET_47) == PAGE_OFFSET_47) &&
+		(PAGESIZE() == SZ_16K)) {
 		va_bits = 47;
 	} else if ((_stext & PAGE_OFFSET_48) == PAGE_OFFSET_48) {
 		va_bits = 48;
