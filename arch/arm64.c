@@ -19,6 +19,9 @@
 
 #ifdef __aarch64__
 
+#include <asm/hwcap.h>
+#include <stdio.h>
+#include <sys/auxv.h>
 #include "../elf_info.h"
 #include "../makedumpfile.h"
 #include "../print_info.h"
@@ -365,6 +368,57 @@ get_stext_symbol(void)
 	return(found ? kallsym : FALSE);
 }
 
+/* Indirect stringification.  Doing two levels allows the parameter to be a
+ * macro itself.  For example, compile with -DFOO=bar, __stringify(FOO)
+ * converts to "bar".
+ */
+
+#define __stringify_1(x...)	#x
+#define __stringify(x...)	__stringify_1(x)
+
+/*
+ * TCR flags.
+ */
+#define TCR_T1SZ_OFFSET		16
+#define TCR_T1SZ(x)		(((64UL) - (x)) << TCR_T1SZ_OFFSET)
+#define TCR_TxSZ(x)		(TCR_T0SZ(x) | TCR_T1SZ(x))
+#define TCR_TxSZ_WIDTH		6
+#define TCR_T1SZ_MASK		((((1UL) << TCR_TxSZ_WIDTH) - 1) << TCR_T1SZ_OFFSET)
+
+/*
+ * Unlike read_cpuid, calls to read_sysreg are never expected to be
+ * optimized away or replaced with synthetic values.
+ */
+#if 1
+static inline
+ulong get_sysreg_tcr_el1(void)
+{
+	ulong __val;
+	asm ("mrs %0, tcr_el1" : "=r" (__val));
+	return __val;
+}
+#else
+ #define get_sysreg_tcr_el1(id) ({				\
+		ulong __val;					\
+		asm("mrs %0, "#id : "=r" (__val));		\
+		__val;						\
+	})
+#endif
+
+/*
+ * Get TCR_EL1.T1SZ (to get value of vabits_actual)
+ */
+static ulong
+get_tcr_e1_t1sz(void)
+{
+	ulong val;
+
+	DEBUG_MSG("Bhupesh, before calling asm\n");
+	val = get_sysreg_tcr_el1();
+	DEBUG_MSG("Bhupesh, after calling asm\n");
+	return (val & TCR_T1SZ_MASK) >> TCR_T1SZ_OFFSET;
+}
+
 static int
 get_va_bits_from_stext_arm64(void)
 {
@@ -421,11 +475,16 @@ get_page_offset_arm64(void)
 	 * See arch/arm64/include/asm/memory.h for more details.
 	 */
 	if (!vabits_actual) {
-		info->page_offset = (-(1UL << va_bits));
+		vabits_actual = 64 - get_tcr_e1_t1sz();
+		info->page_offset = (-(1UL << vabits_actual));
+		DEBUG_MSG("vabits_actual    : %d (live)\n",
+					vabits_actual);
 		DEBUG_MSG("page_offset    : %lx (approximation)\n",
 					info->page_offset);
 	} else {
 		info->page_offset = (-(1UL << vabits_actual));
+		DEBUG_MSG("vabits_actual    : %d (vmcoreinfo)\n",
+					vabits_actual);
 		DEBUG_MSG("page_offset    : %lx (accurate)\n",
 					info->page_offset);
 	}
